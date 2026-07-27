@@ -8,6 +8,7 @@
 [![RAG](https://img.shields.io/badge/RAG-Retrieval_Augmented_Generation-8A2BE2)](https://en.wikipedia.org/wiki/Prompt_engineering#Retrieval-augmented_generation)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![OCI](https://img.shields.io/badge/Deploy-OCI-F80000?logo=oracle&logoColor=white)](./docs/GUIA_DESPLIEGUE_OCI.md)
+[![Repo](https://img.shields.io/badge/GitHub-willestingbio%2Fmed360--agent-181717?logo=github)](https://github.com/willestingbio/med360-agent)
 
 **Asistente virtual con IA para la plataforma de e-learning médico Medicamentum360.**
 
@@ -205,7 +206,7 @@ med360-agent/
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/<TU_USUARIO>/med360-agent.git
+git clone https://github.com/willestingbio/med360-agent.git
 cd med360-agent
 
 # 2. Configurar variables de entorno
@@ -300,7 +301,7 @@ curl -fsSL https://get.docker.com | sudo bash
 sudo apt install -y docker-compose-v2
 
 # 4. Clonar, configurar y desplegar
-git clone https://github.com/<TU_USUARIO>/med360-agent.git
+git clone https://github.com/willestingbio/med360-agent.git
 cd med360-agent
 cp .env.example .env  # editar API keys
 docker compose up -d
