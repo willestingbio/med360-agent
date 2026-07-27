@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dr. Medici — Demo Widget</title>
+  <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a0533 0%, #2d1060 50%, #1a0533 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .container { text-align: center; padding: 2rem; max-width: 700px; }
+    .logo {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle { color: #a78bfa; font-size: 1.2rem; margin-bottom: 2rem; }
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      margin: 1rem 0;
+      text-align: left;
+    }
+    .card h3 { color: #c084fc; margin-bottom: 0.5rem; }
+    .card p { color: #d1d5db; font-size: 0.95rem; line-height: 1.6; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .feature {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 1.2rem;
+      text-align: center;
+    }
+    .feature .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .feature .title { color: #c084fc; font-weight: 600; margin-bottom: 0.3rem; }
+    .feature .desc { color: #9ca3af; font-size: 0.85rem; }
+    .chat-hint {
+      position: fixed;
+      bottom: 100px;
+      right: 30px;
+      background: #7c3aed;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      animation: pulse 2s infinite;
+      pointer-events: none;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: translateY(0); }
+      50% { opacity: 0.7; transform: translateY(-5px); }
+    }
+    .chat-hint::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      right: 25px;
+      width: 16px;
+      height: 16px;
+      background: #7c3aed;
+      transform: rotate(45deg);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Medicamentum360</div>
+    <div class="subtitle">Formación médica de vanguardia para profesionales de la salud</div>
+
+    <div class="card">
+      <h3>🩺 Dr. Medici — Asistente Virtual IA</h3>
+      <p>
+        Pregúntale al Dr. Medici cualquier cosa sobre Medicamentum360:
+        nuestros cursos, precios, cómo funciona la plataforma, capacitación
+        corporativa, cómo vender tus propios cursos, y mucho más.
+        <br><br>
+        <strong>Haz clic en el ícono de chat 💬 abajo a la derecha para empezar.</strong>
+      </p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="icon">📚</div>
+        <div class="title">Base de Conocimiento</div>
+        <div class="desc">+1,500 líneas de documentación oficial</div>
+      </div>
+      <div class="feature">
+        <div class="icon">🧠</div>
+        <div class="title">RAG Semántico</div>
+        <div class="desc">Búsqueda vectorial con embeddings multilingües</div>
+      </div>
+      <div class="feature">
+        <div class="icon">🔒</div>
+        <div class="title">Respuestas Verificadas</div>
+        <div class="desc">Solo responde con datos oficiales, cita fuentes</div>
+      </div>
+      <div class="feature">
+        <div class="icon">🐳</div>
+        <div class="title">Docker + n8n</div>
+        <div class="desc">Infraestructura auto-contenida y desplegable</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-hint">👋 ¡Pregúntame algo!</div>
+
+  <script type="module">
+    import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+    // URL del webhook de n8n — ajustar según despliegue
+    const N8N_WEBHOOK_URL = window.N8N_WEBHOOK_URL ||
+      'http://localhost:5678/webhook/dr-medici-chat';
+
+    createChat({
+      webhookUrl: N8N_WEBHOOK_URL,
+      webhookConfig: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      },
+      target: '#n8n-chat',
+      mode: 'window',
+      chatInputKey: 'chatInput',
+      chatSessionKey: 'sessionId',
+      metadata: {},
+      showWelcomeScreen: true,
+      defaultLanguage: 'es',
+      initialMessages: [
+        '¡Hola! 👋 Soy **Dr. Medici** 🩺, el asistente virtual de Medicamentum360.',
+        'Puedo ayudarte con:\n📚 Cursos y marketplace\n💰 Precios y reembolsos\n🏥 Capacitación corporativa\n👨‍🏫 Cómo vender tus cursos\n🔒 Privacidad y datos\n❓ Soporte técnico',
+        '¿En qué te puedo ayudar hoy?'
+      ],
+      i18n: {
+        es: {
+          title: 'Dr. Medici 🩺',
+          subtitle: 'Asistente Virtual · Medicamentum360',
+          footer: 'Respuestas basadas en documentación oficial',
+          getStarted: 'Nueva Conversación',
+          inputPlaceholder: 'Escribe tu consulta aquí...',
+          sendButtonText: 'Enviar',
+          closeButtonText: 'Cerrar chat',
+        },
+      },
+    });
+  </script>
+</body>
+</html>
