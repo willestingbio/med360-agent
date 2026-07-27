@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dr. Medici — Medicamentum360</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#0d0221,#1a0533,#2d0b4e,#15062b);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.container{max-width:900px;width:100%;padding:1rem}
+h1{background:linear-gradient(135deg,#a855f7,#6366f1,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:2.2rem;text-align:center;margin-bottom:.3rem}
+.subtitle{color:#a78bfa;text-align:center;margin-bottom:1.5rem;font-size:.95rem}
+.chat-box{background:rgba(255,255,255,.04);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;height:70vh;max-height:700px}
+.chat-header{background:rgba(124,58,237,.15);padding:1rem 1.2rem;display:flex;align-items:center;gap:.8rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.chat-header .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+.chat-header .info h3{color:#e9d5ff;font-size:.95rem}
+.chat-header .info p{color:#a78bfa;font-size:.75rem}
+.messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.8rem}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.msg{max-width:85%;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{align-self:flex-end}
+.msg.agent{align-self:flex-start}
+.msg .bubble{padding:.75rem 1rem;border-radius:14px;font-size:.9rem;line-height:1.5;word-break:break-word}
+.msg.user .bubble{background:#7c3aed;color:#fff;border-bottom-right-radius:4px}
+.msg.agent .bubble{background:rgba(255,255,255,.08);color:#e5e7eb;border-bottom-left-radius:4px}
+.msg .source{font-size:.7rem;color:#a78bfa;margin-top:.25rem;padding-left:.5rem}
+.typing{display:none;align-self:flex-start;padding:.5rem 1rem;color:#9ca3af;font-size:.8rem}
+.typing.active{display:block}
+.input-area{padding:.8rem 1rem;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:.5rem;background:rgba(0,0,0,.2)}
+.input-area input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:.7rem 1rem;color:#e5e7eb;font-size:.9rem;outline:none;transition:border-color .2s}
+.input-area input:focus{border-color:#7c3aed}
+.input-area input::placeholder{color:#6b7280}
+.input-area button{background:#7c3aed;border:none;border-radius:12px;padding:.7rem 1.2rem;color:#fff;cursor:pointer;font-weight:600;font-size:.85rem;transition:background .2s}
+.input-area button:hover{background:#6d28d9}
+.input-area button:disabled{opacity:.5;cursor:not-allowed}
+.status{text-align:center;color:#6b7280;font-size:.7rem;padding:.3rem}
+.api-config{text-align:center;padding:.5rem}
+.api-config input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.4rem .7rem;color:#9ca3af;font-size:.75rem;width:280px;margin-right:.4rem}
+.api-config button{background:transparent;border:1px solid rgba(255,255,255,.15);color:#9ca3af;border-radius:8px;padding:.4rem .7rem;font-size:.75rem;cursor:pointer}
+@media(max-width:600px){.chat-box{height:85vh;border-radius:0}.container{padding:0}h1{font-size:1.5rem}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🩺 Dr. Medici</h1>
+<p class="subtitle">Asistente Virtual de Medicamentum360</p>
+<div class="api-config">
+  <input type="password" id="apiKey" placeholder="OpenAI API Key (opcional, para respuestas con IA)">
+  <button onclick="configureAPI()">Configurar</button>
+</div>
+<div class="chat-box">
+  <div class="chat-header">
+    <div class="avatar">🩺</div>
+    <div class="info"><h3>Dr. Medici</h3><p>Respuestas basadas en documentación oficial</p></div>
+  </div>
+  <div class="messages" id="messages">
+    <div class="msg agent"><div class="bubble">
+      ¡Hola! 👋 Soy <strong>Dr. Medici</strong> 🩺, tu asistente virtual de Medicamentum360.<br><br>
+      Puedo ayudarte con:<br>
+      📚 Cursos y marketplace<br>💰 Precios y reembolsos<br>🏥 Capacitación corporativa<br>
+      👨‍🏫 Cómo crear y vender tus cursos<br>🔒 Privacidad y datos<br>❓ Soporte técnico<br><br>
+      <em>¿En qué te puedo ayudar hoy?</em>
+    </div></div>
+  </div>
+  <div class="typing" id="typing">Dr. Medici está escribiendo...</div>
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Escribe tu consulta aquí..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()" id="sendBtn">Enviar</button>
+  </div>
+</div>
+<div class="status" id="status">Modo: búsqueda local | <span id="sourceCount">cargando...</span></div>
+</div>
+
+<script>
+// ─── Knowledge Base (embedded chunks) ───
+const KB_CHUNKS = [];
+const API_KEY = { value: "" };
+
+// Simple tokenizer and TF-IDF scorer
+function tokenize(text) {
+  return text.toLowerCase()
+    .replace(/[^a-záéíóúüñ0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+}
+
+function searchKB(query, topK = 5) {
+  const queryTokens = tokenize(query);
+  if (!queryTokens.length || !KB_CHUNKS.length) return [];
+  
+  const results = KB_CHUNKS.map(chunk => {
+    const chunkTokens = tokenize(chunk.content);
+    const matchCount = queryTokens.filter(qt => chunkTokens.includes(qt)).length;
+    const score = matchCount / Math.max(1, Math.sqrt(chunkTokens.length));
+    return { ...chunk, score };
+  });
+  
+  return results
+    .filter(r => r.score > 0.05)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+function formatAnswer(query, results) {
+  if (!results.length) {
+    return `No encontré información sobre eso en mi base de conocimiento. Te sugiero:\n\n📝 Revisar nuestra web en https://medicamentum360.com\n💬 Contactar a soporte en /soporte\n📧 Escribir a soporte@medicamentum360.com\n\n¿Hay algo más en lo que pueda ayudarte?`;
+  }
+  
+  const top = results[0];
+  let answer = top.content.trim();
+  if (answer.length > 1500) answer = answer.substring(0, 1500) + "...";
+  
+  const source = top.source;
+  answer += `\n\n*(Fuente: ${source})*`;
+  
+  if (results.length > 1) {
+    const otherSources = [...new Set(results.slice(1).map(r => r.source))];
+    if (otherSources.length) {
+      answer += `\n\n📚 También puedes consultar: ${otherSources.map(s => `**${s}**`).join(", ")}`;
+    }
+  }
+  
+  return answer;
+}
+
+async function askGPT(query, context) {
+  if (!API_KEY.value) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${API_KEY.value}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Eres Dr. Medici, asistente virtual de Medicamentum360. Responde en español colombiano con tono profesional y cálido. Cita la fuente de la información. Si no encuentras la respuesta en el contexto proporcionado, dilo honestamente. Contexto:\n\n" + context },
+          { role: "user", content: query }
+        ],
+        max_tokens: 600,
+        temperature: 0.3
+      })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch(e) { return null; }
+}
+
+function addMessage(text, sender, source) {
+  const msgs = document.getElementById("messages");
+  const div = document.createElement("div");
+  div.className = `msg ${sender}`;
+  div.innerHTML = `<div class="bubble">${text.replace(/\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")}</div>`;
+  if (source) div.innerHTML += `<div class="source">${source}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById("userInput");
+  const btn = document.getElementById("sendBtn");
+  const query = input.value.trim();
+  if (!query) return;
+  
+  input.value = "";
+  input.disabled = true;
+  btn.disabled = true;
+  
+  addMessage(query, "user");
+  document.getElementById("typing").classList.add("active");
+  
+  // Search knowledge base
+  const results = searchKB(query, 5);
+  
+  let answer;
+  if (results.length) {
+    // Try GPT first if API key configured
+    const context = results.map(r => `[Fuente: ${r.source}]\n${r.content}`).join("\n\n");
+    const gptAnswer = await askGPT(query, context);
+    answer = gptAnswer || formatAnswer(query, results);
+  } else {
+    answer = formatAnswer(query, []);
+  }
+  
+  document.getElementById("typing").classList.remove("active");
+  addMessage(answer, "agent");
+  
+  input.disabled = false;
+  btn.disabled = false;
+  input.focus();
+  document.getElementById("status").textContent = 
+    `Modo: ${API_KEY.value ? "GPT-4o-mini" : "búsqueda local"} | ${KB_CHUNKS.length} fragmentos indexados`;
+}
+
+function configureAPI() {
+  API_KEY.value = document.getElementById("apiKey").value.trim();
+  const d = document.querySelector(".api-config");
+  d.innerHTML = API_KEY.value 
+    ? '<span style="color:#22c55e;font-size:.75rem">✓ API Key configurada — usando GPT-4o-mini</span>'
+    : '<span style="color:#9ca3af;font-size:.75rem">Sin API Key — usando búsqueda local</span>';
+  document.getElementById("status").textContent = 
+    `Modo: ${API_KEY.value ? "GPT-4o-mini" : "búsqueda local"} | ${KB_CHUNKS.length} fragmentos indexados`;
+}
+
+// ─── Embedded Knowledge Base (no fetch - fully self-contained) ───
+const KB_FILES = {
+  "conocimiento-producto": `# Base de Conocimiento de Medicamentum360
+
+**Versión:** 1.0 · **Fecha:** 2026-07-27
+**Propósito:** Fuente de verdad para agentes de IA que responden preguntas sobre el producto.
+
+---
+
+## 1. ¿Qué es Medicamentum360?
+
+Medicamentum360 es una plataforma SaaS de e-learning y marketplace para el sector salud en Colombia. Permite a hospitales, clínicas y profesionales de la salud comprar, crear y vender cursos médicos, experiencias de realidad virtual (VR) y automatizaciones clínicas.
+
+### Propuesta de valor
+- **Marketplace centralizado** de formación médica para profesionales de la salud en Colombia.
+- **Course Builder propio** que permite a instructores y estudios VR crear cursos completos (módulos, lecciones, video, quizzes, certificación) sin depender de herramientas externas.
+- **Marketplace multi-vendor:** la plataforma se abre a instructores externos y estudios de VR que quieren vender sus propios cursos, con comisión y payout.
+- **Capacitación corporativa (B2B):** hospitales y clínicas compran cupos en lote para sus empleados, gestionan quién tiene acceso y monitorean el progreso de cumplimiento.
+- **Integración con Moodle** como LMS complementario para cursos legacy, con creación automática de shell de curso y SSO.
+
+---
+
+## 2. Arquitectura general
+
+\`\`\`
+Medicamentum360 (Next.js App Router, Docker standalone)
+    │
+    ├── Nginx (SSL, proxy inverso, rate limiting)
+    │
+    ├── Postgres 16 (Docker en VPS propio)
+    ├── Redis 7 (caché, rate limiting)
+    ├── Meilisearch v1.13 (búsqueda del marketplace)
+    │
+    ├── Cloudflare R2 (storage: imágenes, PDFs, modelos 3D, certificados)
+    ├── Cloudflare Stream (video de lecciones — HLS firmado)
+    │
+    ├── Wompi (pasarela de pagos para Colombia)
+    ├── Brevo (email transaccional)
+    ├── Better Auth (autenticación: email+password + Google OAuth)
+    └── Moodle (LMS headless en lms.medicamentum360.com)
+\`\`\`
+
+### Stack tecnológico
+
+| Capa | Tecnología |
+|---|---|
+| Framework | Next.js 15 (App Router, standalone mode) |
+| Base de datos | Postgres 16 (Docker en VPS) |
+| ORM | Prisma 7 con \`@prisma/adapter-pg\` |
+| Seguridad de datos | Row Level Security (RLS) en Postgres — aislamiento multi-tenant |
+| Autenticación | Better Auth 1.6.20 (email+password + Google OAuth) |
+| Caché / Rate Limit | Redis 7 |
+| Pagos | Wompi (webhook con validación HMAC-SHA256) |
+| LMS | Moodle (headless, solo inscripción y SSO) |
+| Búsqueda | Meilisearch v1.13 |
+| Storage | Cloudflare R2 (compatible S3) |
+| Video | Cloudflare Stream (HLS adaptativo, signed URLs) |
+| Email | Brevo (transaccional) |
+| Reverse proxy | Nginx (SSL, rate limiting, streaming RSC) |
+| Contenedores | Docker Compose |
+| CI/CD | GitHub Actions (deploy SSH al VPS) |
+
+---
+
+## 3. Roles de usuario
+
+| Rol | Descripción |
+|---|---|
+| \`super_admin\` | Administrador general de la plataforma. Puede crear productos, gestionar organizaciones, aprobar/rechazar vendors, revisar reembolsos, generar payouts. |
+| \`hospital_admin\` | Administrador de una organización/hospital. Invita empleados, compra cupos en lote, asigna cursos a empleados, gestiona roles, ve reportes de progreso. |
+| \`student\` | Empleado/estudiante. Puede comprar cursos individuales, consumir lecciones, tomar quizzes, obtener certificados. |
+| \`vendor\` | Instructor o estudio VR externo. Puede registrarse como vendedor, crear cursos/producots, enviarlos a revisión, y recibir pagos por ventas (con comisión). |
+
+Un mismo usuario puede tener múltiples roles que coexisten (ej. \`hospital_admin\` + \`vendor\`).
+
+---
+
+## 4. Tipos de productos
+
+| Tipo | Descripción |
+|---|---|
+| **Curso** | Contenido pedagógico con módulos, lecciones (video/texto/quiz/recurso), drip content, quizzes, y certificado al completar. |
+| **Experiencia VR** | Experiencia de realidad virtual accesible mediante código de redención para dispositivos Meta Quest u otros visores. El visor 3D en el detalle es demostrativo. |
+| **Automatización** | Herramientas o flujos automatizados para entornos clínicos. |
+
+---
+
+## 5. Marketplace
+
+### 5.1 Descubrimiento de productos
+- **Búsqueda:** barra de búsqueda en \`/productos\`, integrada con Meilisearch (fallback a DB).
+- **Filtros por categoría:** Todos / VR / Cursos / Automatizaciones.
+- **Ordenamiento:** Más recientes, Precio bajo, Precio alto.
+- **Infinite scroll:** 8 productos por página con skeleton loading.
+- **Atribución de vendor:** si el producto pertenece a un vendor externo, se muestra "por: {Vendor.displayName}" en la tarjeta.
+
+### 5.2 Detalle de producto
+- Carrusel de imágenes o visor 3D (para VR).
+- Temario expandible con módulos y lecciones (para cursos \`contentSource: native\`).
+- Lecciones marcadas como "vista previa" (\`isPreview: true\`) visibles sin comprar.
+- Módulos con drip muestran "Se desbloquea tras N días de inscripción".
+- Columna derecha sticky con precio, cantidad, botón de compra, garantía/reembolso.
+
+### 5.3 Carrito
+- **Popover** (no página ni modal). Ancho 420-480px, alto máx 70vh.
+- Persiste en \`localStorage\` para usuarios no autenticados (guest).
+- Merge automático al iniciar sesión (unión de carritos, sin reemplazo).
+- Alerta inline si el usuario ya tiene acceso a un producto.
+- Móvil: bottom sheet.
+
+---
+
+## 6. Course Builder (creación de cursos)
+
+El Course Builder permite crear cursos completos directamente desde Medicamentum360, sin depender de Moodle.
+
+### 6.1 Estrategia de Moodle
+- El shell del curso (nombre, categoría, visibilidad) **sí se crea en Moodle** automáticamente (\`core_course_create_courses\`) y se vincula vía \`Product.moodleCourseId\`.
+- El contenido pedagógico (módulos, lecciones, video, quizzes) **vive en Postgres** propio, no en Moodle, porque la API REST de Moodle no expone funciones para crear secciones, recursos ni quizzes.
+- Para cursos legacy (\`contentSource: moodle_legacy\`), el contenido sigue viviendo en Moodle y se accede vía SSO.
+
+### 6.2 Estructura de un curso (\`contentSource: native\`)
+\`\`\`
+Curso
+  ├── Módulo 1 (orden 0, releaseAfterDays: null)
+  │   ├── Lección 1.1 (video, Cloudflare Stream, duración 12:30)
+  │   ├── Lección 1.2 (texto, contenido enriquecido)
+  │   └── Lección 1.3 (quiz, 5 preguntas opción múltiple)
+  ├── Módulo 2 (orden 1, releaseAfterDays: 7 — drip content)
+  │   ├── Lección 2.1 (video)
+  │   └── Lección 2.2 (recurso descargable PDF)
+  └── Módulo 3 (orden 2)
+      └── ...
+\`\`\`
+
+### 6.3 Tipos de lección
+
+| Tipo | Descripción |
+|---|---|
+| \`video\` | Video alojado en Cloudflare Stream. Subida directa desde el navegador al CDN de Cloudflare. |
+| \`text\` | Contenido enriquecido (Markdown/HTML saneado) con editor WYSIWYG. |
+| \`quiz\` | Evaluación con preguntas de opción única, múltiple o verdadero/falso. |
+| \`resource\` | Archivo descargable (PDF, slides). Se marca como "visto" al abrir. |
+
+### 6.4 Video (Cloudflare Stream)
+- El video **nunca** se sirve desde R2. R2 es solo para archivos estáticos.
+- Cloudflare Stream transcodifica automáticamente a HLS adaptativo (múltiples calidades).
+- Entrega mediante **signed URLs** (tokens RS256 con expiración): el manifiesto y los segmentos solo se sirven con token válido.
+- \`requireSignedURLs: true\` + \`allowedOrigins\` restringido al dominio de producción.
+- El archivo se sube **directo a Cloudflare** (Direct Creator Upload), nunca pasa por el servidor Next.js.
+- El token de reproducción se renueva automáticamente antes de expirar.
+
+### 6.5 Quizzes
+- Tipos de pregunta: \`single_choice\`, \`multiple_choice\`, \`true_false\`.
+- Cada pregunta tiene opciones (mínimo 1 marcada como correcta) y explicación opcional (visible tras responder).
+- Configuración por quiz: intentos máximos (ilimitado por defecto), tiempo límite, mezclar preguntas.
+- Cálculo de puntuación server-side (nunca en el cliente).
+- \`passingScorePct\` configurable por curso (default 70%).
+- Revisión pregunta por pregunta tras enviar.
+
+### 6.6 Validaciones antes de publicar
+- Ningún módulo puede estar vacío (sin lecciones).
+- Las lecciones de video deben estar en estado "ready" (no "Procesando" ni "Error").
+- Cada quiz debe tener al menos 1 pregunta y cada pregunta al menos 1 opción correcta.
+- Es obligatoria imagen de portada (advertencia no bloqueante).
+
+---
+
+## 7. Marketplace Multi-Vendor
+
+Hasta la v3.0 todos los productos los creaba el \`super_admin\`. Desde la Fase 6.5, la plataforma se abre a vendedores externos.
+
+### 7.1 Flujo de onboarding de vendor
+1. Usuario se registra en \`/vender\` completando nombre público, bio y tipo de contenido.
+2. Completa KYC: datos fiscales (NIT/CC, certificado bancario) y datos de cuenta bancaria.
+3. Los datos bancarios se **cifran a nivel de aplicación** (AES-256-GCM) antes de persistir — nunca visibles en texto plano ni siquiera para \`super_admin\`.
+4. \`super_admin\` revisa y aprueba el perfil del vendor.
+5. Vendor recibe email de bienvenida con acceso al Course Builder (\`/instructor\`).
+
+### 7.2 Flujo editorial de productos de vendor
+1. Vendor crea su producto (curso o VR) en el Course Builder.
+2. En vez de "Publicar", usa "Enviar para revisión" → \`reviewStatus: pending_review\`.
+3. \`super_admin\` revisa el producto completo en \`/admin/review-queue\` (vista previa real).
+4. Puede aprobar (queda disponible para que el vendor lo publique) o rechazar (con motivo obligatorio enviado al vendor).
+5. **Ningún producto de vendor llega a \`published: true\` sin \`reviewStatus: approved\`.**
+
+### 7.3 Comisión y payouts
+- **Comisión por defecto:** 20% (\`MARKETPLACE_COMMISSION_PCT\`), configurable por vendor.
+- **Payout mensual:** un cron job calcula ventas del periodo, descuenta comisión y genera \`Payout\` en estado \`pending\`.
+- \`super_admin\` revisa y aprueba manualmente el lote antes de disparar transferencias reales.
+- El pago se realiza vía Wompi a la cuenta bancaria del vendor (\`WOMPI_VENDOR_PAYOUT_KEY\`, credencial separada).
+- El vendor ve su historial de payouts (solo lectura) en su panel.
+- **Nunca automático en el primer ciclo:** requiere aprobación humana.
+
+### 7.4 Suspensión de vendor
+- \`super_admin\` puede suspender un vendor (\`Vendor.status: suspended\`).
+- Todos sus productos se despublican automáticamente (no se eliminan).
+- Los estudiantes con \`Enrollment\` activo **mantienen su acceso** a contenido ya comprado.
+- Payouts pendientes de periodos anteriores se procesan normalmente.
+
+---
+
+## 8. Compra corporativa (B2B)
+
+### 8.1 Modelo de EmployeeAssignment
+Un hospital compra cupos de un curso para sus empleados. La compra la paga la organización, pero el acceso se asigna a personas concretas.
+
+### 8.2 Flujo
+1. \`hospital_admin\` activa el toggle "Comprar para mi organización" en el detalle de producto.
+2. Selecciona cantidad de empleados (mínimo 1). Precio = \`unitario × cantidad\`.
+3. Checkout normal vía Wompi → \`Order\` se crea con \`organizationId\` y \`quantity: N\`.
+4. **No se crea \`Enrollment\` automático** — los N cupos quedan sin asignar.
+5. \`hospital_admin\` asigna cupos a empleados desde \`/org/employees\` → se crea \`EmployeeAssignment\` + \`Enrollment\`.
+6. Cupos no asignados se muestran en banner persistente.
+7. Al remover un empleado, el \`EmployeeAssignment\` se revoca pero el cupo se libera para reasignar.
+8. Remover un empleado **no** borra su \`Enrollment\` ni revoca certificados ya emitidos.
+
+---
+
+## 9. Consumo de cursos por el estudiante
+
+### 9.1 Reproductor de lección
+- Layout de 2 columnas: reproductor + sidebar del temario.
+- Navegación "Anterior/Siguiente" respetando orden de módulos/lecciones.
+- Módulos bloqueados por drip muestran fecha de desbloqueo.
+- Estados de lección: ✓ completada, ● actual, · pendiente, 🔒 bloqueada.
+
+### 9.2 Progreso
+- **Video:** auto-marcado al 90% de duración.
+- **Texto/Recurso:** marcado manualmente por el estudiante.
+- **Quiz:** completado al enviar respuestas (aprobado o no).
+- \`Enrollment.progressPct\` se recalcula en tiempo real: \`completadas / total × 100\`.
+- Al 100% y quizzes aprobados → \`Enrollment.status = "completed"\` → certificado disponible.
+
+### 9.3 Certificados
+- PDF generado con jsPDF (diseño branded: nombre, curso, fecha, QR de verificación).
+- Subido a Cloudflare R2 \`certificates/\` con URL firmada.
+- Vista previa en modal + descarga + compartir en LinkedIn.
+
+---
+
+## 10. Panel de organización (hospital_admin)
+
+### 10.1 Gestión de empleados (\`/org/employees\`)
+- **Código de invitación:** enlace único con \`org_code\` para que empleados se registren directamente vinculados a la organización.
+- **Invitación por email:** \`hospital_admin\` ingresa email → se envía invitación (expira en 7 días).
+- **Cambiar rol:** ascender/descender entre \`student\` ↔ \`hospital_admin\`.
+- **Protección de admin único:** imposible dejar una organización sin al menos un \`hospital_admin\` activo. Intentar remover o descender al único admin se bloquea.
+- **Remover empleado:** revoca \`EmployeeAssignment\`, libera el cupo. No borra \`Enrollment\` ni certificados.
+
+### 10.2 Reportes de progreso (\`/org/reports\`)
+- Tabla empleado × curso × progreso con resumen agregado.
+- Exportación a CSV.
+- Filtro por curso.
+
+---
+
+## 11. Reembolsos
+
+### 11.1 Política de elegibilidad
+- **Ventana:** 7 días desde la compra.
+- **Progreso máximo:** 20% del curso.
+- **Para experiencias VR:** solo aplica ventana de 7 días (no hay progreso medible). Si el código VR ya fue redimido, pasa a revisión manual obligatoria.
+- Centralizada en \`lib/refunds/policy.ts\` — fuente única de verdad, nunca duplicada.
+
+### 11.2 Flujo
+1. Estudiante solicita desde \`/orders\` (botón visible solo si es elegible).
+2. \`super_admin\` revisa en \`/admin/refunds\`.
+3. Si aprueba → reversa transacción vía Wompi → revoca acceso → email de confirmación.
+4. Si rechaza → motivo obligatorio → email al estudiante.
+5. Para compras corporativas, solo el \`hospital_admin\` puede solicitar el reembolso (no empleados individuales).
+6. Reembolsos parciales por cupo no soportados en la fase actual.
+
+---
+
+## 12. Soporte
+
+- Formulario en \`/soporte\`, accesible con o sin sesión.
+- Categorías: problema de pago, problema técnico, pregunta sobre certificado, otro.
+- Selector opcional de orden/curso relacionado para dar contexto al equipo.
+- Respuesta por email en menos de 48 horas.
+- Enlace visible en footer y menú de usuario.
+
+---
+
+## 13. Seguridad
+
+### 13.1 Row Level Security (RLS)
+- Aislamiento multi-tenant en Postgres: cada usuario solo ve datos de su organización.
+- 29+ policies en tablas principales, más policies nuevas para Course Builder y Vendor.
+- Helpers: \`requesting_user_id()\`, \`get_user_org_id()\`.
+- Test de aislamiento cross-org obligatorio antes de habilitar pagos reales.
+
+### 13.2 Protección de datos sensibles
+- Datos bancarios de vendors cifrados con AES-256-GCM (\`VENDOR_BANK_ENCRYPTION_KEY\`).
+- URLs firmadas con expiración para certificados e invoices.
+- Video siempre vía manifiesto HLS firmado, nunca URL descargable directa.
+- Cumplimiento Ley 1581 de Habeas Data (Colombia).
+
+### 13.3 Seguridad en pagos
+- Webhook de Wompi validado con HMAC-SHA256.
+- Idempotencia: mismo evento dos veces no duplica inscripción ni orden.
+- \`MOODLE_WS_TOKEN\`, \`WOMPI_PRIVATE_KEY\`, \`WOMPI_EVENTS_SECRET\` y demás secretos nunca expuestos en cliente.
+
+---
+
+## 14. Stack de infraestructura
+
+| Componente | Detalle |
+|---|---|
+| VPS | Hetzner CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) o similar |
+| SO | Ubuntu 24.04 LTS |
+| Firewall | UFW (solo puertos 22, 80, 443) |
+| SSL | Let's Encrypt + Certbot (renovación automática) |
+| Monitoreo | UptimeRobot → \`/api/health\` |
+| Backups | Script \`backup-db.sh\` con cron diario en VPS |
+| Error tracking | Sentry (free tier) |
+
+---
+
+## 15. Cumplimiento y regulación
+
+- **Ley 1581 de 2012 (Habeas Data):** protección de datos personales en Colombia.
+- **Facturación electrónica DIAN:** datos de NIT/CC en checkout. Facturación electrónica completa en Fase 13.
+- **Banner de cookies** con consentimiento explícito (vanilla-cookieconsent).
+- **Política de privacidad** accesible desde el footer.
+
+---
+
+## 16. Estado actual del proyecto (julio 2026)
+
+| Fase | Estado |
+|---|---|
+| Fase 1 — Fundaciones | ✅ Completa |
+| Fase 2 — Landing + Auth | ✅ Completa |
+| Fase 2.5 — CI/CD + VPS | ~ En progreso (CI listo, VPS pendiente) |
+| Fase 3 — Marketplace | ✅ Completa |
+| Fase 4 — Carrito + Checkout (Wompi) | ✅ Completa |
+| Fase 5 — Dashboard del Estudiante | ✅ Completa |
+| Fase 6 — Integración Moodle | ✅ Completa |
+| Fase 6.5 — Course Builder + Multi-Vendor | ✅ Completa |
+| Fase 7 — Panel de Organización | ⬜ Pendiente |
+| Fase 7.1 — Reembolsos y Soporte | ⬜ Pendiente |
+| Fases 8-13 | ⬜ Pendientes |
+
+---
+
+## 17. Glosario
+
+| Término | Definición |
+|---|---|
+| **Course Builder** | Herramienta de creación de cursos dentro de Medicamentum360. |
+| **Drip content** | Contenido que se desbloquea N días después de la inscripción del estudiante. |
+| **Vendor** | Instructor o estudio VR externo que vende en el marketplace. |
+| **KYC** | Know Your Customer — verificación de identidad y datos fiscales del vendor. |
+| **RLS** | Row Level Security — aislamiento de datos a nivel de fila en Postgres. |
+| **HLS** | HTTP Live Streaming — protocolo de streaming adaptativo usado por Cloudflare Stream. |
+| **SSO** | Single Sign-On — autenticación única entre Medicamentum360 y Moodle. |
+| **Payout** | Pago de comisiones al vendor por ventas de sus productos. |
+| **EmployeeAssignment** | Asignación de un cupo de curso a un empleado de una organización. |
+| **Enrollment** | Inscripción de un estudiante en un curso, con tracking de progreso. |
+`,
+  "faq-soporte": `# FAQ de Soporte — Medicamentum360
+
+**Versión:** 1.0 · **Fecha:** 2026-07-27
+**Propósito:** Respuestas a preguntas frecuentes para agentes de IA y equipo de soporte.
+
+---
+
+## Índice
+- [Cuenta y acceso](#cuenta-y-acceso)
+- [Compras y pagos](#compras-y-pagos)
+- [Cursos y contenido](#cursos-y-contenido)
+- [Certificados](#certificados)
+- [Organizaciones y empleados](#organizaciones-y-empleados)
+- [Vendors y creadores](#vendors-y-creadores)
+- [Problemas técnicos](#problemas-tecnicos)
+- [Reembolsos y garantía](#reembolsos-y-garantia)
+- [Privacidad y datos](#privacidad-y-datos)
+
+---
+
+## Cuenta y acceso
+
+### ¿Cómo me registro?
+Ve a \`/sign-up\`. Puedes registrarte con tu email y contraseña, o usar "Continuar con Google". Si tu hospital te envió un enlace de invitación, ábrelo directamente y sigue los pasos; quedarás vinculado automáticamente a tu organización.
+
+### ¿Qué hago si no recibo el email de verificación?
+1. Revisa tu carpeta de spam o correo no deseado.
+2. Si no aparece, en la pantalla de verificación hay un botón "Reenviar email de verificación".
+3. Si el problema persiste, contacta a soporte en \`/soporte\`.
+
+### ¿Puedo cambiar mi contraseña?
+Sí. Ve a \`/configuracion\` → sección Seguridad → "Cambiar contraseña". También puedes usar "¿Olvidaste tu contraseña?" en la pantalla de inicio de sesión.
+
+### ¿Ofrecen autenticación de dos factores (2FA)?
+Sí. Actívala en \`/configuracion\` → Seguridad. Usa una app de autenticación tipo Google Authenticator o Authy para escanear el código QR.
+
+### Olvidé mi contraseña, ¿qué hago?
+1. Ve a \`/sign-in\` → "¿Olvidaste tu contraseña?".
+2. Ingresa tu email y recibirás un enlace de restablecimiento.
+3. Si no recibes el email, revisa spam o contacta a soporte.
+4. El enlace expira tras un tiempo; si caduca, puedes solicitar uno nuevo.
+
+### Mi cuenta dice "no verificada", ¿qué significa?
+Necesitas verificar tu correo electrónico antes de acceder al dashboard. Revisa tu bandeja de entrada (incluyendo spam) para el email de verificación.
+
+### ¿Puedo iniciar sesión con Google y también con email?
+Sí. Si te registraste con Google, puedes seguir usando ese método. Si quieres también usar email y contraseña, contacta a soporte para vincular ambos métodos.
+
+---
+
+## Compras y pagos
+
+### ¿Qué métodos de pago aceptan?
+Procesamos pagos a través de Wompi, que acepta tarjetas de crédito/débito (Visa, Mastercard, American Express), transferencias bancarias PSE (para Colombia), Nequi, y otros medios locales colombianos. Los métodos disponibles se muestran en el widget de Wompi durante el checkout.
+
+### ¿Mis datos de pago están seguros?
+Sí. Medicamentum360 **nunca almacena** los datos de tu tarjeta. El pago se procesa directamente en los servidores de Wompi usando su widget embebido seguro (Checkout Brick). Nuestra conexión con Wompi está cifrada y validada con HMAC-SHA256.
+
+### ¿Recibo factura por mi compra?
+Sí. Al completar una compra recibirás un email de confirmación con el resumen de tu orden. Las facturas en formato PDF están disponibles en \`/configuracion\` → Historial de compras. Los datos de facturación (NIT o CC) se solicitan durante el checkout.
+
+### Hice un pago pero el curso no aparece en Mi Aprendizaje
+Esto puede ocurrir si el webhook de confirmación de Wompi tarda en llegar. Sigue estos pasos:
+1. Espera unos minutos y recarga la página.
+2. Si el curso sigue sin aparecer después de 30 minutos, contacta a soporte indicando el número de referencia de tu transacción de Wompi.
+3. El equipo verificará tu orden y activará tu acceso manualmente.
+
+### Recibí un cobro duplicado, ¿qué hago?
+El sistema tiene protección de idempotencia: aunque el webhook de Wompi se reciba dos veces, no se duplica la inscripción. Si ves dos cobros en tu extracto bancario:
+1. Espera 24-48 horas; a veces los cobros duplicados son retenciones temporales que el banco libera automáticamente.
+2. Si ambos montos se efectivizan, contacta a soporte con los comprobantes.
+
+### ¿Puedo pagar para otra persona?
+Sí. Puedes comprar un curso y luego contactar a soporte para transferir el acceso. Sin embargo, si eres \`hospital_admin\`, el flujo correcto es usar la opción "Comprar para mi organización" y luego asignar los cupos a tus empleados desde \`/org/employees\`.
+
+---
+
+## Cursos y contenido
+
+### ¿Cómo accedo a un curso que compré?
+- **Cursos creados en Medicamentum360:** ve a \`/dashboard\` → Mis Cursos → selecciona el curso. El contenido se reproduce directamente en la plataforma.
+- **Cursos legacy vinculados a Moodle:** al hacer clic en "Continuar curso", serás redirigido automáticamente a \`lms.medicamentum360.com\` con inicio de sesión automático (SSO).
+
+### El video de una lección no carga, ¿qué hago?
+1. Verifica tu conexión a internet.
+2. Intenta recargar la página.
+3. Si el reproductor muestra error, usa el botón "Reintentar" que aparece en el reproductor.
+4. Si el problema persiste en varias lecciones del mismo curso, contacta a soporte indicando el nombre del curso y la lección específica.
+
+### ¿Por qué algunas lecciones aparecen con candado?
+Puede ser por dos razones:
+1. **No has completado las lecciones anteriores** (algunos cursos tienen orden secuencial obligatorio, aunque la mayoría te permite navegar libremente).
+2. **Drip content:** la lección pertenece a un módulo que se desbloquea N días después de tu inscripción. Verás la fecha exacta de desbloqueo junto al candado.
+
+### No aprobé un quiz, ¿cuántos intentos tengo?
+Depende de la configuración del curso. Algunos quizzes tienen intentos ilimitados, otros tienen un máximo (por ejemplo, 3 intentos). Esta información se muestra en la pantalla del quiz antes de empezar y en la pantalla de resultados. Si agotaste todos los intentos y no aprobaste, contacta a soporte para que un instructor revise tu caso.
+
+### ¿Cómo funciona el drip content (contenido por goteo)?
+Algunos cursos liberan el contenido de forma gradual. Por ejemplo, el "Módulo 2" puede configurarse para desbloquearse 7 días después de tu inscripción, aunque hayas completado todo el Módulo 1. Esto permite que el aprendizaje sea espaciado y progresivo. Verás el candado con la fecha exacta de desbloqueo.
+
+### Descargué un recurso (PDF) y no se abre
+Asegúrate de tener un lector de PDF instalado. Si el enlace expiró (las descargas usan URLs firmadas con tiempo limitado), regresa a la lección y vuelve a hacer clic en el recurso para generar un nuevo enlace de descarga.
+
+---
+
+## Certificados
+
+### ¿Cuándo recibo mi certificado?
+Al completar el 100% de las lecciones del curso y aprobar los quizzes obligatorios (si los hay), el certificado se habilita automáticamente. Ve a \`/dashboard\` → Mis Certificados y haz clic en "Generar certificado".
+
+### ¿Puedo generar un certificado varias veces?
+Una vez generado, el certificado queda almacenado. Puedes descargarlo cuantas veces quieras desde Mis Certificados. El sistema no regenera un certificado nuevo cada vez; recupera el existente.
+
+### ¿Los certificados incluyen verificación?
+Sí. Cada certificado incluye un código QR único que permite verificar su autenticidad. Quien escanee el QR puede confirmar que el certificado fue emitido por Medicamentum360 y corresponde a un curso completado.
+
+### ¿Puedo compartir mi certificado en LinkedIn?
+Sí. En el modal de vista previa del certificado, hay un botón "Compartir en LinkedIn" que genera un enlace con los campos pre-rellenados (nombre del curso, fecha, emisor).
+
+### Perdí mi certificado, ¿puedo recuperarlo?
+Sí. Mientras tu cuenta esté activa, puedes volver a \`/dashboard\` → Mis Certificados y descargarlo de nuevo en cualquier momento.
+
+---
+
+## Organizaciones y empleados
+
+### Soy administrador de un hospital, ¿cómo invito a mis empleados?
+Ve a \`/org/employees\`. Tienes dos opciones:
+1. **Código de invitación:** copia el enlace \`https://medicamentum360.com/sign-up?org_code=TUCODIGO\` y compártelo con tus empleados. Al registrarse con ese enlace, quedarán vinculados automáticamente a tu organización.
+2. **Invitación por email:** ingresa el correo del empleado y haz clic en "Invitar". Recibirá un email con el enlace de registro.
+
+### Compré cupos para mis empleados pero no aparecen en el panel
+Los cupos comprados no se asignan automáticamente. Después de comprar, debes ir a \`/org/employees\` y usar el botón "Asignar curso" junto al nombre de cada empleado para asignarle un cupo. El banner superior te mostrará cuántos cupos tienes disponibles sin asignar.
+
+### Asigné un cupo pero el empleado no puede acceder al curso
+Verifica que:
+1. El empleado haya aceptado la invitación y completado su registro en la plataforma.
+2. El \`EmployeeAssignment\` esté en estado \`active\` (no \`revoked\`).
+3. El empleado haya iniciado sesión con la misma cuenta vinculada a la organización.
+
+Si todo está correcto y el problema persiste, contacta a soporte.
+
+### ¿Cómo revoco el acceso de un empleado que dejó el hospital?
+Ve a \`/org/employees\`, busca al empleado y en el menú \`⋮\` selecciona "Remover de la organización". Esto:
+- Le quita el acceso inmediato a los cursos comprados por la organización.
+- **No** borra su cuenta personal ni los certificados que ya obtuvo.
+- **No** afecta cursos que haya comprado con su propio dinero.
+- Libera el cupo para que puedas asignarlo a otro empleado.
+
+### ¿Puedo cambiar un empleado de "Estudiante" a "Administrador"?
+Sí. En \`/org/employees\`, usa el dropdown de rol junto al nombre del empleado. Ten en cuenta que no puedes cambiar tu propio rol, y siempre debe haber al menos un \`hospital_admin\` en la organización.
+
+### ¿Cómo exporto el progreso de mis empleados?
+Ve a \`/org/reports\`. Verás una tabla con el progreso de cada empleado por curso. Usa el botón "Exportar CSV" para descargar los datos en formato hoja de cálculo.
+
+---
+
+## Vendors y creadores
+
+### Quiero vender mis cursos en Medicamentum360, ¿cómo empiezo?
+1. Regístrate como usuario normal si aún no tienes cuenta.
+2. Ve a \`/vender\` y completa el formulario de registro como creador (nombre público, bio).
+3. Completa tus datos fiscales y bancarios para recibir pagos.
+4. El equipo de Medicamentum360 revisará tu perfil (máximo 48 horas).
+5. Una vez aprobado, accede a \`/instructor\` para crear tu primer curso.
+
+### ¿Cuánto me pagan por cada venta?
+Medicamentum360 retiene una comisión del **20%** sobre cada venta de tus productos. Recibes el 80% restante. El pago se realiza mensualmente mediante transferencia bancaria a través de Wompi.
+
+### ¿Cada cuánto recibo mis pagos?
+Los pagos (payouts) se calculan mensualmente. Al final de cada mes, se genera un lote con tus ventas del periodo, se descuenta la comisión y, tras revisión del equipo, se transfiere el monto neto a tu cuenta bancaria.
+
+### Mi producto fue rechazado en revisión, ¿qué hago?
+Recibirás un email con el motivo del rechazo. Puedes editar tu producto en \`/instructor\` para corregir lo señalado y volver a enviarlo a revisión. No es necesario crear un producto nuevo.
+
+### ¿Puedo ver quién compró mis cursos?
+No. Por privacidad de los estudiantes, los vendors no tienen acceso a información personal de los compradores. Sí puedes ver métricas agregadas: número de ventas, ingresos generados y progreso general de los estudiantes en tus cursos a través de las estadísticas de cada curso.
+
+### Suspendieron mi cuenta de vendor, ¿qué pasó?
+Las suspensiones pueden ocurrir por contenido que no cumple los estándares de calidad, incumplimiento de los términos de uso, o a solicitud propia. Recibirás un email con el motivo. Para apelar una suspensión, contacta a soporte.
+
+### Si me suspenden, ¿los estudiantes que ya compraron pierden el acceso?
+No. Los estudiantes que ya adquirieron tus cursos mantienen su acceso al contenido. La suspensión solo impide nuevas ventas de tus productos.
+
+### ¿Mis datos bancarios están seguros?
+Sí. La información de tu cuenta bancaria se almacena cifrada con AES-256-GCM (estándar militar) y nunca es visible en texto plano, ni siquiera para los administradores de la plataforma. Solo el proceso automatizado de payout la desencripta para realizar la transferencia.
+
+---
+
+## Problemas técnicos
+
+### La página no carga o va muy lenta
+1. Verifica tu conexión a internet.
+2. Intenta recargar la página (Ctrl+F5 o Cmd+Shift+R para limpiar caché).
+3. Si el problema persiste, prueba desde otro navegador o dispositivo.
+4. Reporta el problema en \`/soporte\` indicando qué página intentabas visitar y qué error ves.
+
+### Error "No autorizado" al intentar acceder a una página
+Esto suele ocurrir cuando:
+- Tu sesión expiró. Cierra sesión y vuelve a iniciarla.
+- Intentas acceder a una sección que requiere un rol específico (ej. panel de administrador siendo estudiante).
+- Tu acceso fue revocado (por ejemplo, si tu organización te removió).
+Si crees que deberías tener acceso, contacta a soporte.
+
+### Error "Algo salió mal" durante una compra
+- Verifica que los datos de tu tarjeta sean correctos.
+- Asegúrate de tener fondos suficientes.
+- El widget de Wompi debería mostrar un mensaje más específico sobre el error. Si el error es genérico, reintenta en unos minutos.
+- Si el problema persiste, contacta a soporte.
+
+### El certificado no se genera
+Esto puede pasar si el servidor de generación de PDF encuentra un error. Intenta de nuevo desde \`/dashboard\` → Mis Certificados. Si falla repetidamente, contacta a soporte indicando el nombre del curso.
+
+### Problemas de visualización en tablet (iPad)
+Medicamentum360 está diseñado para ser responsive, con soporte específico para tablets (caso de uso común en hospitales). Si encuentras problemas de visualización:
+1. Asegúrate de tener el navegador actualizado.
+2. Prueba en orientación horizontal si la vertical no se ve bien en algunas pantallas.
+3. Reporta el problema indicando modelo de tablet y navegador.
+
+---
+
+## Reembolsos y garantía
+
+### ¿Cuál es la política de reembolso?
+Tienes **7 días** desde la fecha de compra para solicitar un reembolso, siempre que hayas completado **menos del 20%** del curso. Para experiencias VR, solo aplica la ventana de 7 días.
+
+### ¿Cómo solicito un reembolso?
+Ve a \`/orders\` (historial de compras). Si tu orden es elegible (dentro de 7 días y menos de 20% de progreso), verás un botón "Solicitar reembolso". Selecciona el motivo de tu solicitud y envíala. El equipo la revisará y te responderá.
+
+### Si ya completé más del 20% del curso, ¿puedo pedir reembolso igual?
+Puedes enviar la solicitud, pero no será aprobada automáticamente. Pasará a revisión manual del equipo de Medicamentum360, que evaluará tu caso (por ejemplo, si hubo un problema técnico legítimo que te impidió avanzar). No hay garantía de aprobación fuera de la política estándar.
+
+### ¿Cuánto tarda el reembolso?
+Una vez aprobado, el reembolso se procesa a través de Wompi. El tiempo que tarda en reflejarse en tu cuenta depende de tu banco (generalmente 5-10 días hábiles).
+
+### Compré un curso para mi organización, ¿cómo solicito reembolso?
+Solo el \`hospital_admin\` de la organización puede solicitar el reembolso de una compra corporativa, desde su panel de órdenes. Los empleados individuales con cupos asignados no pueden solicitar reembolsos de compras que hizo la organización.
+
+### ¿Hay reembolso parcial si solo usé algunos cupos de una compra en lote?
+Actualmente el reembolso aplica a la orden completa, no a cupos individuales sin usar. Si compraste 10 cupos y solo asignaste 3, el reembolso sería por la orden completa (reembolsando los 7 cupos sin usar y revocando el acceso de los 3 asignados). Si necesitas reembolso solo de los cupos sin usar, contacta a soporte directamente para evaluar tu caso.
+
+---
+
+## Privacidad y datos
+
+### ¿Qué datos personales recolectan?
+Recolectamos nombre, apellidos, email, cargo/especialidad (opcional), datos de facturación (NIT o CC para emitir factura), y foto de perfil (opcional). Cumplimos con la Ley 1581 de 2012 (Habeas Data) de Colombia. Detalles completos en nuestra Política de Privacidad.
+
+### ¿Cómo elimino mi cuenta?
+Ve a \`/configuracion\` → sección "Zona de peligro" → "Eliminar cuenta". Esta acción es irreversible. Si tienes cursos comprados, perderás el acceso a ellos. Si eres vendor, se cancelarán tus productos publicados.
+
+### ¿Comparten mis datos con terceros?
+Tus datos de pago nunca se comparten (se procesan directamente en Wompi). Tus datos personales no se venden ni comparten con terceros no esenciales para la operación de la plataforma. Para el caso de organizaciones, tu \`hospital_admin\` puede ver tu nombre, email y progreso en los cursos asignados por la organización.
+
+### ¿Por cuánto tiempo guardan mis datos?
+Tus datos se conservan mientras tu cuenta esté activa. Al eliminar tu cuenta, los datos personales se eliminan, pero se conservan registros anonimizados de transacciones y certificados emitidos por obligaciones fiscales y de auditoría.
+`,
+  "planes-precios": `# Planes y Precios — Medicamentum360
+
+**Versión:** 1.0 · **Fecha:** 2026-07-27
+**Propósito:** Información completa sobre modelos de precios para agentes de IA y equipo comercial.
+
+---
+
+## 1. Modelo de negocio
+
+Medicamentum360 opera con un modelo **transaccional + comisión**, no por suscripción:
+
+1. **Compra individual de productos:** cada curso, experiencia VR o automatización se paga por separado en el marketplace.
+2. **Compra corporativa en lote (B2B):** las organizaciones compran múltiples cupos de un mismo curso para sus empleados.
+3. **Marketplace multi-vendor con comisión:** los vendedores externos retienen el 80% del precio de venta; Medicamentum360 cobra 20% de comisión.
+
+No existen planes de suscripción mensual ni anual para acceder a la plataforma. El registro como estudiante/comprador es gratuito.
+
+---
+
+## 2. Precios de productos
+
+### 2.1 ¿Quién define los precios?
+
+| Tipo de producto | Quién define el precio |
+|---|---|
+| Producto propio de Medicamentum360 | \`super_admin\` desde el panel de administración |
+| Producto de vendor externo | El propio vendor al crear el producto |
+| VR Experiences | El administrador (\`super_admin\`) o vendor |
+
+### 2.2 Moneda y facturación
+
+- **Moneda:** Peso colombiano (COP).
+- **IVA:** 19% (configurable vía \`DEFAULT_TAX_RATE\`).
+- **Facturación electrónica:** se solicita NIT o CC durante el checkout. La facturación electrónica completa (DIAN) está planificada para la Fase 13.
+
+### 2.3 Transparencia de precios
+
+- El precio mostrado en el marketplace es el precio final (no hay cargos ocultos).
+- El IVA se desglosa en el checkout.
+- El precio se muestra consistente en todas partes: tarjeta del marketplace, detalle de producto, carrito y checkout.
+
+---
+
+## 3. Compra individual
+
+### 3.1 Flujo de precios
+
+\`\`\`
+Precio base del producto
+  + IVA (19%)
+  ─────────────
+  = Total a pagar
+\`\`\`
+
+### 3.2 Procesamiento
+
+- Pago único por producto.
+- Acceso inmediato al curso tras la confirmación del pago por Wompi.
+- Sin suscripción recurrente: pagas una vez, accedes para siempre (o mientras el curso esté disponible en la plataforma).
+- **Sin cargos adicionales** por generación de certificados, emisión de factura, o acceso al contenido.
+
+---
+
+## 4. Compra corporativa en lote (B2B)
+
+### 4.1 ¿Quién puede comprar?
+Exclusivamente usuarios con rol \`hospital_admin\` de una organización registrada.
+
+### 4.2 ¿Cómo funciona?
+1. En el detalle del producto, el \`hospital_admin\` activa "Comprar para mi organización".
+2. Selecciona cantidad de empleados.
+3. Precio total = \`precio unitario × cantidad + IVA\`.
+4. Pago único vía Wompi (mismo flujo que compra individual).
+5. Tras el pago, los cupos quedan disponibles para asignar a empleados desde \`/org/employees\`.
+
+### 4.3 Precios por volumen
+Actualmente **no hay descuento automático por volumen**. El precio por cupo es el mismo independientemente de la cantidad comprada. Descuentos por volumen están anotados como mejora futura (ver \`TRD.md §22\`).
+
+### 4.4 Cupos no asignados
+Los cupos comprados pero no asignados **no caducan** en la fase actual. Una política de expiración (ej. 1 año) está en evaluación para fases posteriores.
+
+---
+
+## 5. Marketplace Multi-Vendor — Comisión
+
+### 5.1 Estructura de comisión
+
+| Concepto | Valor |
+|---|---|
+| **Comisión estándar** | 20% del precio de venta |
+| **El vendor recibe** | 80% del precio de venta |
+| **Comisión negociada** | Configurable por vendor (\`Vendor.commissionPct\`, mínimo desde \`MARKETPLACE_COMMISSION_PCT\`) |
+
+### 5.2 Ejemplo de liquidación
+
+\`\`\`
+Venta de un curso:                    $100,000 COP
+Comisión Medicamentum360 (20%):      -$20,000 COP
+Neto para el vendor:                  $80,000 COP
+\`\`\`
+
+### 5.3 Payout (pago al vendor)
+
+- **Frecuencia:** mensual.
+- **Cálculo:** suma de ventas netas del mes (después de descontar comisión).
+- **Revisión:** el lote mensual es revisado y aprobado manualmente por \`super_admin\` antes de ejecutar el pago.
+- **Método de pago:** transferencia bancaria vía Wompi.
+- **Monto mínimo de payout:** sin mínimo en la fase actual (toda venta genera payout, por pequeña que sea).
+
+### 5.4 El comprador no ve diferencia
+
+El precio que ve el comprador en el marketplace es el mismo, independientemente de si el producto es de Medicamentum360 o de un vendor externo. La comisión es un acuerdo entre Medicamentum360 y el vendor, transparente para el estudiante.
+
+### 5.5 Vendor suspendido
+Si un vendor es suspendido, las ventas ya realizadas antes de la suspensión generan payout normalmente. Los payouts pendientes de periodos anteriores también se procesan. La suspensión solo afecta ventas futuras (sus productos se despublican).
+
+---
+
+## 6. Reembolsos
+
+### 6.1 Política de reembolso
+
+| Condición | Detalle |
+|---|---|
+| **Ventana de tiempo** | 7 días desde la fecha de compra |
+| **Progreso máximo** | Menos del 20% del curso completado |
+| **Experiencias VR** | 7 días desde la compra (si el código no fue redimido) |
+
+### 6.2 Costo del reembolso
+El reembolso es por el monto total de la compra. Medicamentum360 no cobra cargos por procesar reembolsos. El monto se reversa vía Wompi.
+
+### 6.3 Reembolso de compras corporativas
+El reembolso aplica a la orden completa. No hay reembolso parcial de cupos individuales en la fase actual. Si una organización necesita reembolso solo de cupos sin asignar, debe contactar a soporte.
+
+---
+
+## 7. Costos operativos (internos, no visibles al usuario)
+
+Estos son los costos que Medicamentum360 asume por infraestructura:
+
+| Servicio | Costo estimado mensual |
+|---|---|
+| **VPS** (Hetzner CX22: 2 vCPU, 4 GB RAM) | ~$25,000 COP (€5.77) |
+| **Cloudflare R2** (almacenamiento) | ~$0 COP (free tier: 10 GB) |
+| **Cloudflare Stream** (video) | ~$5 USD por 1,000 minutos almacenados + ~$1 USD por 1,000 minutos entregados |
+| **Brevo** (email transaccional) | ~$0 COP (free tier: 300 emails/día) |
+| **Sentry** (error tracking) | ~$0 COP (free tier: 5,000 errores/mes) |
+| **UptimeRobot** (monitoreo) | Gratuito |
+| **Dominio + SSL** | ~$50,000 COP/año (dominio .com) + Let's Encrypt gratis |
+
+---
+
+## 8. Impuestos y cumplimiento fiscal
+
+- **IVA:** 19% sobre productos digitales en Colombia.
+- **Facturación:** se recopilan NIT o CC para facturación electrónica (Fase 13 — DIAN).
+- **Retención en la fuente para vendors:** a definir según la normativa colombiana aplicable a pagos a proveedores/contratistas. La plataforma calcula la comisión pero no retiene impuestos automáticamente en la fase actual (responsabilidad del vendor declarar sus ingresos).
+
+---
+
+## 9. Medios de pago aceptados
+
+A través de **Wompi**:
+- Tarjetas de crédito: Visa, Mastercard, American Express
+- Tarjetas débito
+- PSE (Pagos Seguros en Línea — transferencia desde bancos colombianos)
+- Nequi
+- Daviplata
+
+---
+
+## 10. Preguntas frecuentes sobre precios
+
+**P: ¿Hay planes de suscripción?**
+R: No. El modelo actual es pago por producto. Cada curso o experiencia se compra individualmente.
+
+**P: ¿Puedo pagar en cuotas?**
+R: Depende de lo que ofrezca Wompi y tu banco emisor. La plataforma no gestiona cuotas directamente.
+
+**P: ¿Emiten factura electrónica?**
+R: La emisión completa de factura electrónica DIAN está planificada para la Fase 13. Actualmente se emite un comprobante de compra con los datos fiscales.
+
+**P: Si soy vendor, ¿cuándo recibo mi primer pago?**
+R: Los payouts se procesan mensualmente. Si tuviste ventas en un mes, recibirás tu pago al mes siguiente, tras la revisión del lote por parte del equipo.
+
+**P: ¿Hay un mínimo de ventas para recibir payout?**
+R: No en la fase actual. Todas las ventas del periodo generan payout, sin importar el monto.
+
+**P: ¿Los precios incluyen IVA?**
+R: El precio mostrado es el precio base. El IVA (19%) se calcula y se muestra en el checkout.
+`,
+  "politica-privacidad": `# Política de Privacidad — Medicamentum360
+
+**Última actualización:** 27 de julio de 2026
+**Versión:** 1.0
+
+---
+
+## 1. Identidad del Responsable del Tratamiento
+
+**Medicamentum360** es una plataforma SaaS de e-learning y marketplace para el sector salud, operada por:
+
+- **Razón social:** [Nombre legal de la empresa operadora]
+- **NIT:** [NIT de la empresa]
+- **Domicilio:** Colombia
+- **Correo electrónico de contacto:** privacidad@medicamentum360.com
+- **Sitio web:** https://medicamentum360.com
+
+---
+
+## 2. Marco Legal
+
+Esta política de privacidad se rige por las siguientes disposiciones:
+
+- **Ley 1581 de 2012** — Ley de Protección de Datos Personales (Habeas Data) de la República de Colombia.
+- **Decreto 1377 de 2013** — Reglamentación parcial de la Ley 1581.
+- **Ley 1266 de 2008** — Disposiciones generales del Habeas Data financiero.
+- **Resolución 00564 de 2012** de la Superintendencia de Industria y Comercio (SIC).
+
+---
+
+## 3. Datos Personales que Recolectamos
+
+### 3.1 Datos proporcionados por el Usuario
+
+| Categoría | Datos | Finalidad |
+|---|---|---|
+| **Identificación** | Nombres, apellidos, correo electrónico | Creación de cuenta, comunicación, soporte |
+| **Perfil profesional** | Cargo, especialidad, organización/institución (opcional) | Personalización de la experiencia en la plataforma |
+| **Autenticación** | Contraseña (hash cifrado), tokens de sesión | Acceso seguro a la plataforma |
+| **Facturación** | Tipo de documento (NIT/CC), número de documento | Emisión de facturas, cumplimiento fiscal DIAN |
+| **Pago** | Información de tarjeta de crédito/débito | **Nota importante:** Medicamentum360 NO almacena datos de tarjetas. El pago se procesa exclusivamente a través de Wompi (widget embebido seguro). |
+| **Contenido generado** | Cursos creados, quizzes, preguntas, respuestas a quizzes | Operación de la plataforma como marketplace de formación |
+| **Soporte** | Asunto, descripción del problema, orden/curso relacionado (opcional) | Resolución de tickets de soporte |
+
+### 3.2 Datos recolectados automáticamente
+
+| Categoría | Datos | Finalidad |
+|---|---|---|
+| **Navegación** | Páginas visitadas, tiempo en la plataforma, interacciones | Análisis de uso, mejora del producto |
+| **Dispositivo** | Tipo de navegador, sistema operativo, resolución de pantalla | Compatibilidad y optimización de la experiencia |
+| **Ubicación** | Dirección IP (anonimizada) | Seguridad, prevención de fraude, cumplimiento fiscal |
+| **Cookies** | Cookies técnicas, de sesión y de preferencias | Funcionamiento de la plataforma, recordar preferencias |
+
+### 3.3 Datos sensibles
+
+Medicamentum360 puede recolectar datos considerados sensibles según la legislación colombiana:
+
+- **Datos de salud/educación:** inferidos por el tipo de cursos que consumes (formación médica). Estos datos se usan exclusivamente para recomendarte contenido relevante y generar tus certificados de formación continua.
+- **Datos fiscales/bancarios de vendors:** los creadores de contenido que venden en el marketplace proporcionan datos fiscales (NIT, certificado bancario) y de cuenta bancaria. Estos datos se **cifran con AES-256-GCM** a nivel de aplicación antes de ser almacenados y solo se desencriptan durante el proceso automatizado de pago de comisiones.
+
+---
+
+## 4. Finalidad del Tratamiento
+
+Los datos personales recolectados se utilizan para:
+
+1. **Crear y gestionar tu cuenta** de usuario en la plataforma.
+2. **Procesar tus compras** de cursos, experiencias VR y otros productos.
+3. **Emitir facturas electrónicas** conforme a los requisitos de la DIAN.
+4. **Proveer acceso al contenido** que has adquirido (lecciones, videos, recursos descargables).
+5. **Generar certificados** de finalización de cursos con validez verificable.
+6. **Enviar comunicaciones transaccionales** (confirmaciones de compra, recordatorios, notificaciones de la plataforma).
+7. **Brindar soporte técnico** y resolver tus consultas.
+8. **Mejorar la plataforma** mediante análisis de uso agregado y anonimizado.
+9. **Prevenir fraude** y garantizar la seguridad de la plataforma.
+10. **Cumplir obligaciones legales** (fiscales, contables, de protección al consumidor).
+11. **Gestionar el marketplace multi-vendor:** calcular y procesar pagos de comisiones a creadores.
+12. **Gestión de organizaciones:** permitir que los administradores de hospitales asignen y monitoreen la capacitación de sus empleados.
+
+---
+
+## 5. Datos de Terceros
+
+### 5.1 Datos de empleados gestionados por una organización
+
+Cuando un \`hospital_admin\` crea o gestiona empleados en la plataforma:
+
+- El administrador proporciona nombres y correos electrónicos de sus empleados para invitarlos.
+- El empleado, al aceptar la invitación, consiente el tratamiento de sus datos conforme a esta política.
+- El administrador de la organización puede ver el nombre, email y progreso académico de los empleados bajo su gestión.
+- El empleado conserva control sobre su cuenta personal y puede solicitar la eliminación de sus datos en cualquier momento.
+
+### 5.2 Datos de vendors/creadores externos
+
+Los instructores y estudios VR que venden en el marketplace:
+
+- Proporcionan datos fiscales y bancarios que se almacenan cifrados.
+- El nombre público del vendor (\`displayName\`) es visible en el marketplace.
+- Los datos de ventas y comisiones son visibles para el vendor en su panel.
+- Los compradores NO tienen acceso a datos personales del vendor más allá de su nombre público.
+
+---
+
+## 6. Transferencia y Transmisión de Datos
+
+### 6.1 Proveedores de servicios (encargados del tratamiento)
+
+| Proveedor | País | Datos compartidos | Finalidad |
+|---|---|---|---|
+| **Wompi** (Bancolombia) | Colombia | Datos de pago (procesados, no almacenados por nosotros) | Procesamiento de pagos y reembolsos |
+| **Brevo** (Sendinblue) | Francia / UE | Correo electrónico, nombre | Envío de emails transaccionales |
+| **Cloudflare** (R2 y Stream) | Global | Archivos de contenido (imágenes, PDFs, certificados, videos) | Almacenamiento y distribución de contenido |
+| **Better Auth** | Self-hosted (nuestro VPS) | Credenciales de acceso (hash) | Autenticación de usuarios |
+| **Google** (OAuth) | EE.UU. | Email, nombre (solo si usas "Iniciar sesión con Google") | Autenticación |
+| **Moodle** (LMS) | Self-hosted (nuestro VPS) | Email, nombre, ID de usuario | Sincronización de inscripciones y progreso |
+| **Sentry** | EE.UU. | Datos de errores técnicos (anonimizados) | Monitoreo de estabilidad de la plataforma |
+| **Hetzner/Contabo/DigitalOcean** | Alemania / EE.UU. | Datos del servidor (infraestructura) | Hosting de la plataforma |
+
+### 6.2 Transferencia internacional de datos
+
+Algunos de nuestros proveedores operan en servidores fuera de Colombia. Al usar Medicamentum360, aceptas que tus datos puedan ser transferidos y procesados en países que pueden tener estándares de protección de datos diferentes a los colombianos. En todos los casos, exigimos contractualmente a nuestros proveedores que cumplan con estándares de seguridad equivalentes o superiores a los exigidos por la legislación colombiana.
+
+### 6.3 Datos que NO compartimos
+
+- **No vendemos** datos personales a terceros.
+- **No compartimos** datos de tarjetas de crédito/débito con nadie.
+- **No compartimos** datos de progreso académico individual con terceros ajenos a tu organización (si perteneces a una).
+- **No compartimos** datos bancarios de vendors en texto plano, ni siquiera con administradores internos.
+
+---
+
+## 7. Derechos del Titular (Ley 1581 de 2012)
+
+Como titular de datos personales, tienes los siguientes derechos:
+
+### 7.1 Derecho de Acceso
+Puedes solicitar en cualquier momento conocer qué datos personales tuyos tenemos almacenados. Esta información está disponible en tu panel de \`/configuracion\`.
+
+### 7.2 Derecho de Actualización y Rectificación
+Puedes corregir, actualizar o completar tus datos personales desde \`/configuracion\` → Perfil. Si un dato no es editable desde la interfaz, contáctanos.
+
+### 7.3 Derecho de Supresión (Derecho al Olvido)
+Puedes solicitar la eliminación total de tus datos personales. Ve a \`/configuracion\` → "Eliminar cuenta". Esta acción:
+- Elimina tus datos personales de nuestros sistemas activos.
+- **No elimina** registros de transacciones financieras que debemos conservar por ley (5 años para fines fiscales en Colombia).
+- **No elimina** certificados ya emitidos (se anonimizan pero se conservan para verificabilidad).
+- Si eres vendor, tus productos se despublican pero los estudiantes que ya los compraron mantienen acceso.
+
+### 7.4 Derecho de Revocatoria del Consentimiento
+Puedes revocar tu consentimiento para el tratamiento de datos en cualquier momento. Esto puede implicar la imposibilidad de seguir usando servicios que requieren dichos datos (ej. no podemos emitir un certificado sin tu nombre).
+
+### 7.5 Derecho de Oposición
+Puedes oponerte al tratamiento de tus datos para finalidades específicas, como comunicaciones de marketing (no realizamos marketing sin consentimiento explícito previo).
+
+### 7.6 Procedimiento para ejercer tus derechos
+
+Envía tu solicitud a **privacidad@medicamentum360.com** con:
+- Nombre completo
+- Correo electrónico asociado a tu cuenta
+- Derecho que deseas ejercer
+- Descripción clara de tu solicitud
+
+Responderemos en un máximo de **10 días hábiles** (plazo legal según Ley 1581). Si la solicitud es compleja, podemos extender el plazo a 15 días hábiles, notificándote antes.
+
+---
+
+## 8. Seguridad de los Datos
+
+### 8.1 Medidas técnicas
+
+| Medida | Descripción |
+|---|---|
+| **Cifrado en tránsito** | Toda comunicación entre tu navegador y nuestros servidores viaja cifrada mediante TLS 1.3 (HTTPS). |
+| **Cifrado en reposo** | Datos bancarios de vendors cifrados con AES-256-GCM. Contraseñas hasheadas con algoritmos modernos (bcrypt/argon2). |
+| **Aislamiento multi-tenant** | Row Level Security (RLS) en Postgres: cada usuario solo puede acceder a sus propios datos y los de su organización. |
+| **Autenticación robusta** | Better Auth con 2FA opcional (TOTP). Sesiones con expiración. Rate limiting contra ataques de fuerza bruta. |
+| **Acceso mínimo** | El personal de Medicamentum360 accede a datos solo cuando es estrictamente necesario para soporte u operación. |
+| **Backups cifrados** | Las copias de seguridad de la base de datos se almacenan cifradas. |
+| **Monitoreo** | Logs de acceso y actividad para detección de anomalías. |
+
+### 8.2 Medidas organizativas
+
+- Todo el personal con acceso a datos firma acuerdos de confidencialidad.
+- Capacitación periódica en protección de datos personales.
+- Evaluaciones de impacto de privacidad para nuevos features.
+- Notificación de brechas de seguridad a la SIC y a los titulares afectados en un máximo de 15 días hábiles.
+
+---
+
+## 9. Cookies y Tecnologías de Rastreo
+
+### 9.1 Cookies técnicas (esenciales)
+- **Sesión:** necesarias para mantener tu sesión activa mientras usas la plataforma.
+- **Carrito:** almacenamiento local en tu navegador para recordar productos agregados al carrito (incluso sin sesión iniciada).
+- **Tema:** recordar tu preferencia de modo claro/oscuro.
+- **Idioma:** recordar tu preferencia de idioma.
+
+Estas cookies no requieren consentimiento porque son esenciales para el funcionamiento del servicio.
+
+### 9.2 Cookies de preferencias
+- **Tema (dark/light/system):** se almacena en \`localStorage\` para persistir tu elección visual.
+- **Última lección visitada:** para que la plataforma te redirija a "continuar donde lo dejaste".
+
+### 9.3 Cookies de analítica
+- Google Analytics 4 (GA4) o Posthog, configurados con anonimización de IP. Se usan exclusivamente para entender cómo se usa la plataforma y mejorarla.
+
+### 9.4 Gestión de cookies
+Al visitar el sitio por primera vez, verás un banner de cookies donde puedes aceptar o rechazar cookies no esenciales. Puedes cambiar tu configuración en cualquier momento desde \`/configuracion\` o desde la configuración de tu navegador.
+
+---
+
+## 10. Conservación de Datos
+
+| Tipo de dato | Periodo de conservación |
+|---|---|
+| Datos de cuenta activa | Mientras la cuenta esté activa |
+| Certificados emitidos | Indefinido (para verificabilidad, anonimizados si la cuenta se elimina) |
+| Historial de compras y facturas | 5 años (obligación fiscal colombiana) |
+| Tickets de soporte | 2 años desde su cierre |
+| Datos de vendors (incluyendo fiscales) | 5 años desde la última transacción (obligación fiscal) |
+| Logs técnicos | 90 días (rotación automática) |
+| Datos en backups | 30 días (rotación de backups) |
+
+---
+
+## 11. Menores de Edad
+
+Medicamentum360 no está dirigido a menores de 18 años. Si eres padre/madre o tutor y descubres que tu hijo menor de edad nos ha proporcionado datos personales sin tu consentimiento, contáctanos para eliminarlos.
+
+---
+
+## 12. Cambios a esta Política
+
+Cualquier cambio a esta política será:
+1. Publicado en esta página con una nueva fecha de "última actualización".
+2. Notificado por correo electrónico a los usuarios registrados con al menos 15 días de anticipación si los cambios son sustanciales.
+3. Sujeto a tu aceptación antes de seguir usando la plataforma si los cambios afectan la finalidad del tratamiento de forma significativa.
+
+---
+
+## 13. Contacto y Reclamos
+
+### 13.1 Responsable del tratamiento
+- **Correo:** privacidad@medicamentum360.com
+- **Dirección:** [Dirección física en Colombia]
+- **Teléfono:** [Teléfono de contacto]
+
+### 13.2 Reclamos ante la autoridad de control
+Si consideras que tus derechos de protección de datos han sido vulnerados, puedes presentar un reclamo ante:
+
+**Superintendencia de Industria y Comercio (SIC)**
+- Delegatura para la Protección de Datos Personales
+- Sitio web: https://www.sic.gov.co
+- Línea gratuita nacional: 01 8000 910165
+
+---
+
+## 14. Aceptación
+
+Al registrarte y usar Medicamentum360, declaras haber leído y comprendido esta Política de Privacidad y autorizas el tratamiento de tus datos personales conforme a lo aquí descrito, en cumplimiento de la Ley 1581 de 2012.
+`,
+  "terminos-uso": `# Términos de Uso — Medicamentum360
+
+**Última actualización:** 27 de julio de 2026
+**Versión:** 1.0
+
+---
+
+## 1. Aceptación de los Términos
+
+### 1.1 Acuerdo vinculante
+
+Al acceder, registrarte o utilizar el sitio web y los servicios de **Medicamentum360** (en adelante, "la Plataforma"), ubicada en https://medicamentum360.com, aceptas estar legalmente vinculado por estos Términos de Uso ("Términos"). Si no estás de acuerdo con estos Términos, no debes utilizar la Plataforma.
+
+### 1.2 Modificaciones
+
+Medicamentum360 se reserva el derecho de modificar estos Términos en cualquier momento. Las modificaciones entrarán en vigor:
+- Inmediatamente para nuevos usuarios.
+- 15 días después de su publicación para usuarios existentes, con notificación por correo electrónico a la dirección registrada.
+
+El uso continuado de la Plataforma después de la entrada en vigor de los cambios constituye tu aceptación de los nuevos Términos.
+
+### 1.3 Elegibilidad
+
+Para usar la Plataforma debes:
+- Ser mayor de 18 años.
+- Tener capacidad legal para celebrar contratos vinculantes según la legislación colombiana.
+- Proporcionar información veraz, precisa y completa durante el registro.
+- No haber sido suspendido o expulsado previamente de la Plataforma.
+
+---
+
+## 2. Definiciones
+
+| Término | Definición |
+|---|---|
+| **Plataforma** | El sitio web, aplicaciones y servicios digitales operados por Medicamentum360. |
+| **Usuario** | Toda persona natural o jurídica que se registra y utiliza la Plataforma. |
+| **Estudiante** | Usuario que compra y consume contenido educativo en la Plataforma. |
+| **Organización** | Entidad (hospital, clínica, empresa) registrada en la Plataforma para gestionar la capacitación de sus empleados. |
+| **hospital_admin** | Usuario designado como administrador de una Organización. |
+| **Vendor** | Usuario registrado como creador/vendedor de contenido en el marketplace. |
+| **Producto** | Curso, experiencia VR o automatización ofrecido en el marketplace. |
+| **Contenido** | Videos, textos, quizzes, recursos descargables y demás material pedagógico incluido en un Producto. |
+| **Enrollment** | Inscripción de un Estudiante en un curso, que le otorga acceso al Contenido. |
+| **EmployeeAssignment** | Asignación de un cupo de curso financiado por una Organización a un empleado específico. |
+
+---
+
+## 3. Cuentas de Usuario
+
+### 3.1 Registro
+
+Para acceder a las funcionalidades completas de la Plataforma, debes crear una cuenta proporcionando:
+- Nombre y apellidos reales.
+- Dirección de correo electrónico válida.
+- Contraseña segura.
+
+También puedes registrarte usando tu cuenta de Google ("Iniciar sesión con Google").
+
+### 3.2 Responsabilidades de la cuenta
+
+Eres responsable de:
+- Mantener la confidencialidad de tu contraseña y credenciales de acceso.
+- Toda actividad que ocurra bajo tu cuenta.
+- Notificar inmediatamente a Medicamentum360 sobre cualquier uso no autorizado de tu cuenta.
+- Proporcionar información actualizada y veraz.
+
+### 3.3 Verificación de correo electrónico
+
+Debes verificar tu dirección de correo electrónico para acceder a las funcionalidades de la Plataforma. Las cuentas no verificadas tienen acceso limitado.
+
+### 3.4 Terminación de cuenta
+
+Puedes eliminar tu cuenta en cualquier momento desde \`/configuracion\` → "Eliminar cuenta". Medicamentum360 se reserva el derecho de suspender o terminar cuentas que violen estos Términos.
+
+---
+
+## 4. Roles y Permisos
+
+### 4.1 Roles disponibles
+
+| Rol | Descripción |
+|---|---|
+| \`student\` | Usuario estándar. Puede comprar, consumir contenido y obtener certificados. |
+| \`hospital_admin\` | Administrador de una Organización. Puede invitar/remover empleados, comprar cupos en lote, ver reportes. |
+| \`super_admin\` | Administrador general de Medicamentum360. Acceso completo a todas las funcionalidades administrativas. |
+| \`vendor\` | Creador de contenido externo. Puede crear y vender productos en el marketplace. |
+
+### 4.2 Obligaciones por rol
+
+**hospital_admin:**
+- Debes garantizar que los empleados que invites consienten el tratamiento de sus datos conforme a la Política de Privacidad.
+- Eres responsable de gestionar adecuadamente los cupos comprados por tu organización.
+- No puedes remover al único administrador restante de la organización.
+
+**Vendor:**
+- Debes proporcionar datos fiscales y bancarios veraces.
+- Eres responsable del contenido que publicas, incluyendo su precisión, legalidad y derechos de autor.
+- Debes cumplir con los estándares de calidad de la Plataforma.
+- Aceptas la comisión estándar del 20% sobre cada venta, salvo acuerdo diferente por escrito.
+
+---
+
+## 5. Propiedad Intelectual
+
+### 5.1 Contenido de Medicamentum360
+
+Todo el contenido creado por Medicamentum360, incluyendo pero no limitado a: el diseño de la Plataforma, el código fuente, la interfaz de usuario, logos, marcas, textos institucionales y cursos propios, es propiedad exclusiva de Medicamentum360 y está protegido por las leyes de propiedad intelectual colombianas e internacionales.
+
+### 5.2 Contenido del Usuario
+
+Al subir, publicar o crear contenido en la Plataforma (cursos, lecciones, quizzes, textos, videos, imágenes), declaras y garantizas que:
+- Eres el propietario legítimo de dicho contenido o tienes las licencias necesarias.
+- El contenido no infringe derechos de propiedad intelectual de terceros.
+- El contenido cumple con todas las leyes aplicables.
+
+### 5.3 Licencia de contenido de Vendors
+
+Al publicar un producto en el marketplace, otorgas a Medicamentum360 una licencia no exclusiva, mundial, transferible y sublicenciable para:
+- Mostrar, reproducir y distribuir tu contenido en la Plataforma.
+- Usar fragmentos de tu contenido con fines promocionales (ej. vista previa en el marketplace).
+- Modificar técnicamente el contenido solo en la medida necesaria para su correcta visualización en la Plataforma (ej. transcodificación de video).
+
+Esta licencia termina cuando retiras tu producto de la Plataforma, excepto para el contenido ya adquirido por estudiantes, que conservan acceso conforme a estos Términos.
+
+### 5.4 Contenido de estudiante
+
+El contenido generado por estudiantes (respuestas a quizzes, datos de progreso) es propiedad del estudiante. Medicamentum360 lo usa exclusivamente para:
+- Calcular y mostrar tu progreso.
+- Emitir certificados.
+- Proveer reportes a tu organización (si tu acceso fue financiado por una organización).
+- Mejoras anonimizadas y agregadas de la Plataforma.
+
+### 5.5 Uso prohibido del contenido
+
+Queda expresamente prohibido:
+- Descargar, copiar, reproducir o redistribuir los videos y materiales de los cursos fuera de la Plataforma, salvo los recursos expresamente marcados como descargables.
+- Compartir credenciales de acceso con terceros no autorizados.
+- Usar el contenido con fines comerciales sin autorización expresa.
+- Realizar ingeniería inversa, descompilar o extraer el código fuente de la Plataforma.
+
+---
+
+## 6. Compras, Pagos y Facturación
+
+### 6.1 Procesamiento de pagos
+
+Todos los pagos en la Plataforma se procesan a través de **Wompi** (operado por Bancolombia). Medicamentum360 no almacena datos de tarjetas de crédito o débito.
+
+### 6.2 Precios
+
+- Los precios se muestran en pesos colombianos (COP).
+- Los precios incluyen IVA cuando se indique, o este se calcula en el checkout.
+- Medicamentum360 se reserva el derecho de modificar precios en cualquier momento. Los cambios no afectan compras ya realizadas.
+
+### 6.3 Confirmación de compra
+
+La compra se considera completada cuando:
+1. Wompi procesa exitosamente el pago.
+2. La Plataforma recibe y valida el webhook de confirmación de Wompi.
+3. Se crea la inscripción (\`Enrollment\`) correspondiente en la base de datos.
+
+En caso de que el pago sea exitoso pero la inscripción falle por un error técnico, Medicamentum360 se compromete a activar el acceso manualmente en un plazo máximo de 48 horas hábiles.
+
+### 6.4 Acceso al contenido
+
+- **Cursos \`native\`:** acceso disponible inmediatamente tras la confirmación del pago. El contenido se consume directamente en la Plataforma.
+- **Cursos \`moodle_legacy\`:** acceso vía redirección SSO a Moodle. El contenido se consume en \`lms.medicamentum360.com\`.
+- **Experiencias VR:** acceso mediante código de redención único, visible en el dashboard del estudiante.
+
+### 6.5 Duración del acceso
+
+El acceso a un producto comprado es **vitalicio** mientras:
+- El producto permanezca publicado en la Plataforma.
+- Tu cuenta permanezca activa y en buen estado.
+- En el caso de acceso financiado por una organización: mientras el \`EmployeeAssignment\` permanezca \`active\`.
+
+Medicamentum360 se reserva el derecho de retirar productos del marketplace. Si un producto es retirado, los estudiantes que lo adquirieron previamente conservan su acceso.
+
+---
+
+## 7. Reembolsos
+
+### 7.1 Política de reembolso estándar
+
+Los usuarios tienen derecho a solicitar un reembolso dentro de los **7 días calendario** siguientes a la compra, siempre que:
+- El progreso del curso sea inferior al **20%**.
+- Para experiencias VR: el código de redención no haya sido utilizado.
+
+### 7.2 Proceso de reembolso
+
+1. El usuario solicita el reembolso desde su historial de órdenes (\`/orders\`).
+2. Medicamentum360 revisa la solicitud.
+3. Si se cumplen las condiciones, el reembolso se aprueba y se procesa a través de Wompi.
+4. El usuario pierde el acceso al contenido reembolsado.
+
+### 7.3 Reembolsos fuera de política
+
+Las solicitudes que no cumplen la política estándar (ej. más de 7 días, o más de 20% de progreso) quedan sujetas a revisión discrecional de Medicamentum360. La presentación de una solicitud no garantiza su aprobación.
+
+### 7.4 Reembolsos corporativos
+
+Para compras realizadas por una Organización, solo el \`hospital_admin\` puede solicitar el reembolso. Los empleados individuales con cupos asignados no tienen facultad para solicitar reembolsos de compras corporativas.
+
+---
+
+## 8. Obligaciones y Conducta del Usuario
+
+### 8.1 Conducta prohibida
+
+Queda terminantemente prohibido:
+- Usar la Plataforma para fines ilegales o no autorizados.
+- Intentar eludir, desactivar o interferir con las medidas de seguridad de la Plataforma.
+- Usar bots, scrapers u otros medios automatizados para acceder a la Plataforma.
+- Publicar contenido falso, engañoso, difamatorio, obsceno u ofensivo.
+- Suplantar la identidad de otra persona o entidad.
+- Compartir, revender o transferir credenciales de acceso a terceros.
+- Manipular calificaciones, reseñas o sistemas de reputación del marketplace.
+- Intentar acceder a datos de otros usuarios u organizaciones sin autorización.
+- Hacer ingeniería inversa del reproductor de video o intentar descargar videos de las lecciones.
+- Usar la Plataforma para enviar spam o comunicaciones no solicitadas.
+
+### 8.2 Obligaciones de los Vendors
+
+Además de las obligaciones generales, los vendors deben:
+- Garantizar que el contenido que publican es preciso, especialmente en formación médica.
+- No publicar contenido médico que contradiga evidencia científica establecida o guías clínicas oficiales.
+- Mantener actualizados sus datos fiscales y bancarios.
+- Responder a solicitudes de revisión editorial en tiempo razonable.
+- No publicar productos idénticos o sustancialmente similares a productos ya existentes de otros vendors con intención de confundir a los compradores.
+
+---
+
+## 9. Contenido de Terceros y Enlaces Externos
+
+La Plataforma puede contener enlaces a sitios web de terceros (ej. Moodle, Wompi, LinkedIn). Medicamentum360 no es responsable del contenido, las políticas de privacidad o las prácticas de estos sitios externos. El acceso a sitios de terceros es bajo tu propio riesgo.
+
+---
+
+## 10. Certificados
+
+### 10.1 Emisión
+
+Los certificados son generados automáticamente cuando un estudiante completa el 100% de un curso y aprueba los quizzes obligatorios. El certificado incluye:
+- Nombre del estudiante.
+- Nombre del curso.
+- Fecha de finalización.
+- Código QR de verificación.
+
+### 10.2 Validez
+
+Los certificados emitidos por Medicamentum360 son un reconocimiento de finalización del contenido del curso. **No constituyen** una titulación oficial, acreditación universitaria, ni certificación profesional regulada por el Ministerio de Educación o el Ministerio de Salud de Colombia, salvo que el curso específico indique expresamente lo contrario y cuente con las acreditaciones correspondientes.
+
+### 10.3 Verificación
+
+Cualquier persona puede verificar la autenticidad de un certificado escaneando el código QR impreso, que redirige a una página de verificación en la Plataforma.
+
+---
+
+## 11. Limitación de Responsabilidad
+
+### 11.1 Exclusión de garantías
+
+La Plataforma se proporciona "tal cual" y "según disponibilidad". Medicamentum360 no garantiza que:
+- La Plataforma esté libre de errores o interrupciones.
+- El contenido de los cursos sea exacto, completo o actualizado (especialmente en contenido médico, que puede evolucionar).
+- Los resultados de aprendizaje del estudiante sean los esperados.
+
+### 11.2 Naturaleza del contenido médico
+
+El contenido ofrecido en la Plataforma tiene fines educativos y de formación continua. **No constituye asesoramiento médico** para el diagnóstico o tratamiento de pacientes. Los profesionales de la salud son responsables de aplicar su juicio clínico independientemente de la formación recibida en la Plataforma.
+
+### 11.3 Límite de responsabilidad
+
+En la máxima medida permitida por la ley colombiana, Medicamentum360 no será responsable por:
+- Daños indirectos, incidentales, especiales o consecuentes.
+- Pérdida de datos, ingresos o beneficios.
+- Contenido publicado por vendors externos.
+- Decisiones clínicas tomadas basándose en el contenido de los cursos.
+- Interrupciones del servicio por causas fuera de nuestro control razonable.
+
+La responsabilidad total de Medicamentum360 frente a cualquier reclamo relacionado con la Plataforma se limita al monto pagado por el usuario en los 12 meses anteriores al reclamo, o a $100,000 COP, lo que sea menor.
+
+### 11.4 Fuerza mayor
+
+Medicamentum360 no será responsable por retrasos o incumplimientos causados por eventos fuera de su control razonable, incluyendo pero no limitado a: desastres naturales, guerras, terrorismo, disturbios civiles, embargos, incendios, inundaciones, accidentes, huelgas, cortes de energía, fallas de infraestructura de internet, o actos de gobierno.
+
+---
+
+## 12. Indemnización
+
+Aceptas indemnizar y mantener indemne a Medicamentum360, sus directores, empleados y agentes frente a cualquier reclamo, daño, pérdida o gasto (incluidos honorarios legales razonables) derivado de:
+- Tu uso de la Plataforma.
+- Tu violación de estos Términos.
+- Tu violación de derechos de terceros (incluidos derechos de propiedad intelectual).
+- Contenido que publiques o distribuyas a través de la Plataforma.
+
+---
+
+## 13. Suspensión y Terminación
+
+### 13.1 Suspensión de cuenta
+
+Medicamentum360 puede suspender tu cuenta temporalmente sin previo aviso si:
+- Detecta actividad sospechosa o potencialmente fraudulenta.
+- Recibe una queja fundamentada de violación de estos Términos.
+- Es requerido por una autoridad competente.
+
+### 13.2 Terminación de cuenta
+
+Medicamentum360 puede terminar tu cuenta permanentemente por:
+- Violación grave o reiterada de estos Términos.
+- Publicación de contenido ilegal, fraudulento o peligroso.
+- Suplantación de identidad.
+- Impago de comisiones como vendor (cuando aplique).
+- Inactividad prolongada (con aviso previo razonable).
+
+### 13.3 Efectos de la terminación
+
+Tras la terminación:
+- Perderás acceso a la Plataforma.
+- Perderás acceso al contenido comprado, excepto certificados ya emitidos (que permanecen verificables).
+- Si eres vendor, tus productos serán despublicados pero los estudiantes que los compraron conservan su acceso.
+- Las obligaciones de confidencialidad, propiedad intelectual, limitación de responsabilidad e indemnización sobreviven a la terminación.
+
+---
+
+## 14. Resolución de Disputas
+
+### 14.1 Ley aplicable
+
+Estos Términos se rigen por las leyes de la **República de Colombia**, sin consideración a sus principios de conflicto de leyes.
+
+### 14.2 Negociación directa
+
+Las partes acuerdan intentar resolver cualquier disputa de buena fe mediante negociación directa antes de recurrir a otros medios. La parte que inicia el reclamo debe enviar una notificación escrita a la otra parte describiendo la disputa y la solución propuesta.
+
+### 14.3 Mediación y arbitraje
+
+Si la negociación directa no resuelve la disputa en un plazo de 30 días calendario, las partes se someterán a:
+1. **Mediación** ante el Centro de Arbitraje y Conciliación de la Cámara de Comercio de Bogotá (o la cámara de comercio con jurisdicción en el domicilio del consumidor), como etapa previa.
+2. Si la mediación no prospera, **arbitraje** ante el mismo centro, de conformidad con sus reglamentos vigentes.
+
+### 14.4 Jurisdicción
+
+Para disputas no sujetas a arbitraje (incluyendo acciones de menor cuantía y reclamos de consumidores), las partes se someten a la jurisdicción de los jueces civiles de la ciudad de Bogotá D.C., Colombia, con renuncia expresa a cualquier otro fuero que pudiera corresponderles.
+
+### 14.5 Renuncia a acciones colectivas
+
+En la medida en que la ley lo permita, renuncias a tu derecho de participar en acciones colectivas o demandas de clase contra Medicamentum360. Todos los reclamos deben resolverse de forma individual.
+
+---
+
+## 15. Disposiciones Generales
+
+### 15.1 Acuerdo completo
+
+Estos Términos, junto con la Política de Privacidad, constituyen el acuerdo completo entre tú y Medicamentum360 respecto al uso de la Plataforma, y reemplazan cualquier acuerdo previo.
+
+### 15.2 Divisibilidad
+
+Si alguna disposición de estos Términos es declarada inválida o inaplicable por un tribunal competente, las disposiciones restantes permanecerán en pleno vigor y efecto.
+
+### 15.3 No renuncia
+
+La falta de ejercicio de cualquier derecho por parte de Medicamentum360 no constituye una renuncia a dicho derecho.
+
+### 15.4 Cesión
+
+No puedes ceder tus derechos u obligaciones bajo estos Términos sin el consentimiento previo por escrito de Medicamentum360. Medicamentum360 puede ceder estos Términos sin restricción en el contexto de una fusión, adquisición o venta de activos.
+
+### 15.5 Notificaciones
+
+Todas las notificaciones oficiales relacionadas con estos Términos deben enviarse a:
+- **Medicamentum360:** legal@medicamentum360.com
+- **Usuarios:** al correo electrónico registrado en su cuenta
+
+Las notificaciones por correo electrónico se consideran recibidas 24 horas después de su envío.
+
+---
+
+## 16. Disposiciones Específicas para Vendors
+
+### 16.1 Registro como vendor
+
+Para registrarte como vendor debes:
+- Tener una cuenta de usuario activa en la Plataforma.
+- Completar el formulario de registro en \`/vender\`.
+- Proporcionar datos fiscales veraces (NIT o CC).
+- Proporcionar datos de cuenta bancaria para recibir pagos (almacenados cifrados).
+
+### 16.2 Revisión de contenido
+
+Todo producto creado por un vendor externo debe pasar por revisión editorial antes de su publicación. Medicamentum360 se reserva el derecho de:
+- Rechazar productos que no cumplan los estándares de calidad.
+- Solicitar modificaciones antes de aprobar la publicación.
+- Retirar productos ya publicados si se detectan problemas posteriores.
+
+### 16.3 Pagos y comisiones
+
+- El vendor acepta la comisión de Medicamentum360 sobre cada venta (20% por defecto, salvo acuerdo diferente).
+- Los pagos (payouts) se calculan mensualmente y se procesan tras aprobación manual del equipo de Medicamentum360.
+- El vendor es responsable de declarar sus ingresos ante las autoridades fiscales colombianas.
+- Si una venta es reembolsada, la comisión correspondiente no se paga al vendor (o se descuenta de su siguiente payout).
+
+### 16.4 Relación entre las partes
+
+La relación entre Medicamentum360 y el vendor es de **contratista independiente**, no de socios, empleados, franquiciados o joint venture. Ninguna de las partes tiene autoridad para obligar legalmente a la otra.
+
+---
+
+## 17. Contacto
+
+Para cualquier pregunta, consulta o reclamo relacionado con estos Términos de Uso:
+
+- **Correo electrónico:** legal@medicamentum360.com
+- **Formulario de soporte:** https://medicamentum360.com/soporte
+- **Dirección:** [Dirección física en Colombia]
+
+---
+
+**Al hacer clic en "Acepto" durante el registro, o al usar la Plataforma, declaras haber leído, entendido y aceptado estos Términos de Uso en su totalidad.**
+`
+};
+
+// Chunk the embedded KB files at startup
+(function initKB() {
+  const sources = Object.keys(KB_FILES);
+  for (const source of sources) {
+    const text = KB_FILES[source];
+    const paragraphs = text.split(/\n\n+/);
+    for (const para of paragraphs) {
+      const clean = para.trim();
+      if (clean.length < 50) continue;
+      if (clean.length > 800) {
+        const sentences = clean.split(/(?<=[.!?])\s+/);
+        let chunk = "";
+        for (const s of sentences) {
+          if ((chunk + s).length > 800 && chunk) {
+            KB_CHUNKS.push({ content: chunk.trim(), source });
+            chunk = s;
+          } else {
+            chunk += (chunk ? " " : "") + s;
+          }
+        }
+        if (chunk.trim()) KB_CHUNKS.push({ content: chunk.trim(), source });
+      } else {
+        KB_CHUNKS.push({ content: clean, source });
+      }
+    }
+  }
+  
+  document.getElementById("sourceCount").textContent = `${KB_CHUNKS.length} fragmentos`;
+  document.getElementById("status").textContent = 
+    `Modo: búsqueda local | ${KB_CHUNKS.length} fragmentos de ${sources.length} documentos`;
+})();
+
+document.getElementById("userInput").focus();
+</script>
+</body>
+</html>
