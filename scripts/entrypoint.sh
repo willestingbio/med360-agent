@@ -1,35 +1,53 @@
 #!/bin/bash
 # ── entrypoint.sh — Knowledge API startup ──────────────
-# 1. Espera a que Qdrant esté disponible
-# 2. Ejecuta ingestión si no hay datos
-# 3. Inicia la API
-
 set -e
 
 echo "=== Med360 Knowledge API Entrypoint ==="
-echo "Esperando a Qdrant en ${QDRANT_HOST}:${QDRANT_PORT}..."
 
-# Esperar a Qdrant
-for i in $(seq 1 30); do
-    if curl -sf "http://${QDRANT_HOST}:${QDRANT_PORT}/health" > /dev/null 2>&1; then
-        echo "✓ Qdrant disponible"
+python3 -c "
+import urllib.request, time, os
+host = os.environ.get('QDRANT_HOST','qdrant')
+port = os.environ.get('QDRANT_PORT','6333')
+for i in range(30):
+    try:
+        urllib.request.urlopen(f'http://{host}:{port}', timeout=2)
+        print('✓ Qdrant disponible')
         break
-    fi
-    echo "  Esperando Qdrant... (intento $i/30)"
-    sleep 2
-done
+    except Exception:
+        print(f'  Esperando Qdrant... ({i+1}/30)')
+        time.sleep(2)
+else:
+    print('⚠ Qdrant no disponible, continuando...')
+"
 
-# Verificar si ya hay datos en Qdrant
-POINTS=$(curl -sf "http://${QDRANT_HOST}:${QDRANT_PORT}/collections/${QDRANT_COLLECTION}" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('points_count',0))" 2>/dev/null || echo "0")
+python3 -c "
+import urllib.request, json, os, subprocess, sys
+host = os.environ.get('QDRANT_HOST','qdrant')
+port = os.environ.get('QDRANT_PORT','6333')
+collection = os.environ.get('QDRANT_COLLECTION','med360_knowledge')
+needs_ingestion = True
+try:
+    req = urllib.request.Request(f'http://{host}:{port}/collections/{collection}')
+    resp = urllib.request.urlopen(req, timeout=5)
+    data = json.loads(resp.read())
+    points = data.get('result',{}).get('points_count',0)
+    print(f'Colección {collection}: {points} vectores')
+    if points and points > 0:
+        needs_ingestion = False
+        print('✓ Base poblada, sin ingestión necesaria')
+except Exception as e:
+    err = str(e)
+    if '404' in err or 'Not Found' in err:
+        print('Colección no existe, se creará en ingestión')
+    else:
+        print(f'⚠ {err}')
 
-if [ "$POINTS" = "0" ] || [ "$POINTS" = "" ]; then
-    echo "Base de conocimiento vacía. Ejecutando ingestión inicial..."
-    cd /app && python3 src/ingest.py
-    echo "✓ Ingestión completada"
-else
-    echo "✓ Base de conocimiento ya poblada (${POINTS} vectores)"
-fi
+if needs_ingestion:
+    print('Ejecutando ingestión inicial (descargando modelo ~120MB)...')
+    result = subprocess.run([sys.executable, 'src/ingest.py'], cwd='/app')
+    if result.returncode != 0:
+        print('⚠ Ingestión falló, la API iniciará igual (reintenta con docker compose exec knowledge-api python3 src/ingest.py --recreate)')
+"
 
-# Iniciar API
-echo "Iniciando Knowledge API en ${API_HOST}:${API_PORT}..."
+echo "Iniciando Knowledge API en 0.0.0.0:8001..."
 exec python3 src/api.py

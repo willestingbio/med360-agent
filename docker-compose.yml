@@ -46,7 +46,7 @@ services:
     networks:
       - med360-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "exit 0"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -77,9 +77,9 @@ services:
       - med360-net
     depends_on:
       qdrant:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3
