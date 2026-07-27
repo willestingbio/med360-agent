@@ -1,0 +1,52 @@
+{
+  "name": "Ingestión de Base de Conocimiento — Med360",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 168 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly Ingestion",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "python src/ingest.py --recreate && echo 'Ingestion completed'",
+        "cwd": "/app"
+      },
+      "id": "execute-ingest",
+      "name": "Run Ingestion Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.item.json.stdout || '';\nconst success = output.includes('Indexación completada');\n\nif (!success) {\n  throw new Error(`Ingestion failed: ${output}`);\n}\n\nreturn { success: true, output };\n"
+      },
+      "id": "check-result",
+      "name": "Check Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Ingestion": {
+      "main": [[ { "node": "Run Ingestion Script", "type": "main", "index": 0 } ]]
+    },
+    "Run Ingestion Script": {
+      "main": [[ { "node": "Check Result", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1.0.0",
+  "active": false,
+  "description": "Reindexa semanalmente la base de conocimiento en Qdrant. Corre en el contenedor knowledge-api."
+}

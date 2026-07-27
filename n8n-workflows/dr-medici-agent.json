@@ -1,0 +1,130 @@
+{
+  "name": "Dr. Medici — Agente IA de Medicamentum360",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dr-medici-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer los datos del mensaje entrante\nconst body = $input.item.json;\n\n// El @n8n/chat widget envía:\n// { chatInput: \"mensaje del usuario\", sessionId: \"uuid\" }\nconst userMessage = body.chatInput || body.message || body.text || \"\";\nconst sessionId = body.sessionId || \"\";\n\nreturn {\n  userMessage,\n  sessionId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "agent": "conversationalAgent",
+        "options": {
+          "systemMessage": "Eres Dr. Medici, el asistente virtual oficial de Medicamentum360, la plataforma SaaS líder de e-learning y marketplace de formación médica en Colombia.\n\n## Tu Personalidad\n- Profesional, cordial y preciso, como un colega médico de confianza.\n- Hablas en español colombiano, tono cálido pero formal.\n- Usas emojis médicos ocasionalmente 🩺 💊 🏥 📚 🎓\n- Te identificas como asistente de IA.\n- Si preguntan algo de salud personal, recuerdas que eres asistente de plataforma, no médico.\n\n## Reglas de Respuesta\n1. SIEMPRE usa la herramienta buscar_base_conocimiento antes de responder sobre Medicamentum360.\n2. NUNCA improvises información. Si no está en la base de conocimiento, dilo honestamente.\n3. Cita la fuente al final: *(Fuente: nombre-del-documento)*.\n4. Para preguntas de precios, sé exacto con las cifras.\n5. Para procedimientos, da pasos numerados.\n6. Si no encuentras la info, sugiere contacto con soporte: /soporte o soporte@medicamentum360.com\n7. NUNCA reveles información técnica interna (claves, tokens, endpoints).\n8. NUNCA diagnostiques condiciones médicas.\n\n## Mensaje de Bienvenida (solo si es primer mensaje)\n\"¡Hola! 👋 Soy Dr. Medici 🩺, el asistente virtual de Medicamentum360. Puedo ayudarte con información sobre cursos, precios, capacitación corporativa, cómo vender tus cursos, privacidad y soporte técnico. ¿En qué te puedo ayudar hoy?\"\n\n## Temas que dominas\n- Producto y plataforma (arquitectura, roles, tipos de productos)\n- Marketplace (cómo comprar, filtros, búsqueda)\n- Course Builder (crear cursos, módulos, lecciones, quizzes, video)\n- Multi-Vendor (registro, comisiones 20%, payouts mensuales, revisión)\n- Capacitación corporativa B2B (cupos en lote, asignación, reportes)\n- Consumo de cursos (reproductor, progreso, quizzes, certificados)\n- Seguridad y privacidad (RLS, cifrado, Ley 1581 Colombia)\n- Precios y pagos (Wompi, facturación, reembolsos)\n- Términos de uso (propiedad intelectual, limitaciones)\n- Soporte técnico (problemas comunes, contacto)"
+        }
+      },
+      "id": "ai-agent",
+      "name": "Dr. Medici Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://knowledge-api:8001/search",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $fromAI('query') }}"
+            },
+            {
+              "name": "top_k",
+              "value": "={{ $fromAI('top_k') || 5 }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "tool-search-kb",
+      "name": "buscar_base_conocimiento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Transformar resultados de búsqueda en texto legible para el LLM\nconst response = $input.item.json;\n\nif (!response || !response.results || response.results.length === 0) {\n  return {\n    found: false,\n    message: \"No se encontró información relevante en la base de conocimiento de Medicamentum360.\"\n  };\n}\n\nconst sources = {};\nresponse.results.forEach(r => {\n  if (!sources[r.source]) sources[r.source] = [];\n  sources[r.source].push(r.content);\n});\n\nlet contextText = \"📚 **Información encontrada en la base de conocimiento:**\\n\\n\";\nfor (const [source, contents] of Object.entries(sources)) {\n  contextText += `### Fuente: ${source}\\n`;\n  contents.forEach((c, i) => {\n    contextText += `${c.trim()}\\n\\n`;\n  });\n}\n\nreturn {\n  found: true,\n  context: contextText,\n  numResults: response.results.length,\n  sources: Object.keys(sources)\n};"
+      },
+      "id": "format-search",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta final del agente\nconst agentOutput = $input.item.json.output || $input.item.json.text || JSON.stringify($input.item.json);\nconst sessionId = $('parse-input').item.json.sessionId;\n\nreturn {\n  output: agentOutput,\n  sessionId: sessionId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "text": "={{ $json.output }}",
+          "sessionId": "={{ $json.sessionId }}",
+          "timestamp": "={{ $json.timestamp }}"
+        }
+      },
+      "id": "response-node",
+      "name": "Respond to Chat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Chat Webhook": {
+      "main": [[ { "node": "Parse Input", "type": "main", "index": 0 } ]]
+    },
+    "Parse Input": {
+      "main": [[ { "node": "Dr. Medici Agent", "type": "main", "index": 0 } ]]
+    },
+    "Dr. Medici Agent": {
+      "main": [[ { "node": "Format Response", "type": "main", "index": 0 } ]]
+    },
+    "buscar_base_conocimiento": {
+      "main": [[ { "node": "Format Results", "type": "main", "index": 0 } ]]
+    },
+    "Format Results": {
+      "main": [[ { "node": "Dr. Medici Agent", "type": "main", "index": 0 } ]]
+    },
+    "Format Response": {
+      "main": [[ { "node": "Respond to Chat", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1.0.0",
+  "active": true,
+  "description": "Agente IA Dr. Medici para Medicamentum360 — responde preguntas sobre la plataforma usando RAG con la base de conocimiento oficial.",
+  "tags": ["medicamentum360", "dr-medici", "agente-ia", "rag", "healthcare"]
+}
