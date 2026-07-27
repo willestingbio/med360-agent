@@ -1,0 +1,136 @@
+# ── Docker Compose — med360-agent ──────────────────
+# Despliega: n8n + Qdrant + Knowledge API + Nginx
+# Uso: docker compose up -d
+
+services:
+  # ─── n8n — Orquestador del agente IA ──────────────────
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: med360-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-change-me-to-a-random-string}
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+      - N8N_AI_ENABLED=true
+      # LLM Configuration (elegir uno)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/workflows:ro
+    networks:
+      - med360-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Qdrant — Base vectorial para embeddings ──────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: med360-qdrant
+    restart: unless-stopped
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - med360-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─── Knowledge API — Búsqueda semántica (FastAPI) ──────
+  knowledge-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: med360-knowledge-api
+    restart: unless-stopped
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION=med360_knowledge
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-sentence_transformers}
+      - EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+      - SEARCH_TOP_K=5
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    volumes:
+      - ./knowledge-base:/app/knowledge-base:ro
+      - ./data:/app/data
+    networks:
+      - med360-net
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Nginx — Reverse proxy + SSL ───────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: med360-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./widget:/usr/share/nginx/html/widget:ro
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - med360-net
+    depends_on:
+      - n8n
+      - knowledge-api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── Certbot — SSL Lets Encrypt ────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: med360-certbot
+    volumes:
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - med360-net
+
+networks:
+  med360-net:
+    driver: bridge
+    name: med360-net
+
+volumes:
+  n8n_data:
+    name: med360_n8n_data
+  qdrant_data:
+    name: med360_qdrant_data
+  certbot_data:
+    name: med360_certbot_data
+  certbot_www:
+    name: med360_certbot_www

@@ -1,0 +1,24 @@
+# ── docker-compose.prod.yml — Overrides de producción ──
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  n8n:
+    environment:
+      - N8N_HOST=${DOMAIN}
+      - N8N_PROTOCOL=https
+      - N8N_USER_MANAGEMENT_DISABLED=false
+    # En producción, n8n no expone su puerto — solo Nginx
+
+  knowledge-api:
+    environment:
+      - LOG_LEVEL=WARNING
+    restart: always
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+
+  qdrant:
+    restart: always
