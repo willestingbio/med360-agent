@@ -1,0 +1,17 @@
+# ── .dockerignore ────────────────────────────────────
+.git
+.gitignore
+.env
+.env.*
+*.md
+!knowledge-base/*.md
+__pycache__
+*.pyc
+.venv
+venv
+node_modules
+data/*
+!data/.gitkeep
+.DS_Store
+.vscode
+.idea
