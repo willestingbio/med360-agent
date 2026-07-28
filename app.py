@@ -202,15 +202,13 @@ def build_ui():
         )
 
         chatbot = gr.Chatbot(
-            value=[(
-                None,
-                "¡Hola! 👋 Soy **medicalMen** 🩺, tu asistente virtual de "
-                "Medicamentum360. Pregúntame sobre cursos, precios, reembolsos, "
-                "capacitación corporativa o cómo vender tus cursos. ¿En qué te ayudo?",
-            )],
+            value=[{
+                "role": "assistant",
+                "content": "¡Hola! 👋 Soy **medicalMen** 🩺, tu asistente virtual de Medicamentum360. Pregúntame sobre cursos, precios, reembolsos, capacitación corporativa o cómo vender tus cursos. ¿En qué te ayudo?",
+            }],
             label="Chat",
             height=450,
-            avatar_images=(None, "🩺"),
+            type="messages",
         )
 
         msg = gr.Textbox(
@@ -219,7 +217,7 @@ def build_ui():
             container=False,
             scale=7,
         )
-        clear = gr.ClearButton([msg, chatbot], value="Limpiar chat")
+        clear = gr.Button("Limpiar chat")
 
         gr.Examples(EXAMPLES, inputs=msg, label="Ejemplos de preguntas")
 
@@ -229,7 +227,10 @@ def build_ui():
             "Challenge Alura Agente (ONE + Alura Latam)*"
         )
 
-        msg.submit(chat, [msg, chatbot], [chatbot]).then(lambda: "", None, [msg])
+        msg.submit(
+            lambda m, h: h + [{"role": "user", "content": m}] + [{"role": "assistant", "content": chat(m, h)}],
+            [msg, chatbot], [chatbot]
+        ).then(lambda: "", None, [msg])
 
     return demo
 
