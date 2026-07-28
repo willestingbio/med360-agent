@@ -12,6 +12,7 @@ venv
 node_modules
 data/*
 !data/.gitkeep
+!data/kb_chunks.json
 .DS_Store
 .vscode
 .idea

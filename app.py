@@ -64,36 +64,24 @@ def search_kb(query: str, top_k: int = 4) -> list:
 def direct_response(query: str) -> Optional[str]:
     q = query.lower().strip().rstrip("?!¿¡").replace("  ", " ")
 
-    greetings = ["hola", "hola como estas", "buenos dias", "buenas tardes", "buenas noches", "hey", "hi"]
-    if q in greetings:
-        return (
-            "¡Hola! 👋 Soy **medicalMen** 🩺, el asistente virtual de Medicamentum360. "
-            "Puedo ayudarte con información sobre cursos médicos, marketplace, precios, "
-            "reembolsos, cómo vender tus cursos y soporte técnico. ¿En qué te puedo ayudar?"
-        )
+    greetings = ["hola", "hola como estas", "hola como estas?", "buenos dias", "buenas tardes", "buenas noches", "hey", "hi", "que tal", "buenas"]
+    if q in greetings or any(g in q for g in ["hola", "buen dia", "buen dia"]):
+        return "¡Hola! 👋 Soy medicalMen 🩺, el asistente virtual de Medicamentum360. Pregúntame sobre la plataforma: cursos, precios, reembolsos, cómo vender tus cursos, capacitación corporativa... ¡lo que necesites!"
 
-    identity = ["quien eres", "que eres", "quien sos", "como te llamas"]
-    if q in identity:
-        return (
-            "Soy **medicalMen** 🩺, el asistente virtual con IA de Medicamentum360. "
-            "Mi función es ayudarte con información sobre la plataforma: cursos médicos, "
-            "marketplace, precios, capacitación corporativa, cómo crear y vender cursos, "
-            "privacidad y soporte técnico. Uso Groq (Llama 3.3 70B) para darte "
-            "respuestas precisas basadas en documentación oficial."
-        )
+    if any(w in q for w in ["como estas", "como esta", "como vas", "que tal", "todo bien"]):
+        return "¡Estoy muy bien, gracias por preguntar! 😊 Estoy aquí listo para ayudarte con cualquier duda sobre Medicamentum360. ¿En qué puedo ayudarte?"
 
-    if q in ["gracias", "muchas gracias"]:
-        return "¡De nada! 😊 ¿Hay algo más en lo que pueda ayudarte?"
+    if any(w in q for w in ["quien eres", "que eres", "quien sos", "como te llamas"]):
+        return "Soy **medicalMen** 🩺, el asistente virtual con IA de Medicamentum360. Respondo preguntas sobre la plataforma usando Groq (Llama 3.3 70B) y nuestra base de conocimiento de 237 documentos. ¿En qué te ayudo?"
 
-    if q in ["adios", "chao", "hasta luego", "nos vemos"]:
+    if any(w in q for w in ["gracias", "te agradezco"]):
+        return "¡De nada! 😊 ¿Hay algo más en lo que pueda ayudarte sobre Medicamentum360?"
+
+    if any(w in q for w in ["adios", "chao", "hasta luego", "nos vemos"]):
         return "¡Hasta pronto! 🩺 No dudes en volver si tienes más preguntas."
 
-    if q in ["que puedes hacer", "que haces", "ayuda", "help"]:
-        return (
-            "Puedo ayudarte con:\n📚 Cursos y marketplace\n💰 Precios y reembolsos\n"
-            "🏥 Capacitación corporativa\n👨‍🏫 Cómo convertirte en vendedor (vendor)\n"
-            "🔒 Privacidad y datos\n❓ Soporte técnico\n\n¡Pregúntame lo que necesites! 🩺"
-        )
+    if any(w in q for w in ["que puedes hacer", "que haces", "ayuda", "help", "sobre que", "puedo preguntar", "que me puedes decir", "de que temas"]):
+        return "Puedo ayudarte con TODO esto sobre Medicamentum360:\n\n📚 **Cursos y marketplace** — qué cursos hay, cómo funcionan\n💰 **Precios y pagos** — cuánto cuesta, cómo se paga\n🏥 **Capacitación corporativa** — comprar cursos para empleados de tu hospital\n👨‍🏫 **Vender tus cursos** — cómo convertirte en instructor (vendor)\n🔄 **Reembolsos** — política de devolución\n🔒 **Privacidad y seguridad** — cómo protegemos tus datos\n\n¡Pregúntame lo que quieras! 🩺"
 
     return None
 
