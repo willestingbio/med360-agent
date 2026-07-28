@@ -22,47 +22,13 @@ KB_PATH      = os.path.join(os.path.dirname(__file__), "data", "kb_chunks.json")
 st.set_page_config(page_title="medicalMen — Medicamentum360", page_icon="🩺")
 
 # ─── CSS ─────────────────────────────────────────────────────────────
+# Minimal CSS — solo colores, sin ocultar nada
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-* { font-family: 'Inter', system-ui, sans-serif; }
-
-.stApp { 
-    background: linear-gradient(135deg, #0d0221, #1a0533, #2d0b4e) !important; 
-}
-
-h1 { 
-    background: linear-gradient(135deg, #a855f7, #6366f1, #c084fc);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    font-size: 2.4rem !important; text-align: center; margin-bottom: 0;
-}
-
-/* Chat bubbles */
-.stChatMessage [data-testid="stChatMessageContent"] {
-    border-radius: 16px; padding: 14px 18px; font-size: 15px; line-height: 1.6;
-}
-.stChatMessage[data-testid="stChatMessageUser"] [data-testid="stChatMessageContent"] {
-    background: #7c3aed; color: white; border-bottom-right-radius: 4px;
-}
-.stChatMessage[data-testid="stChatMessageAssistant"] [data-testid="stChatMessageContent"] {
-    background: rgba(255,255,255,0.08); color: #e5e7eb; border-bottom-left-radius: 4px;
-}
-
-/* Input */
-.stChatInput textarea {
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px; color: #e5e7eb; padding: 12px 16px;
-}
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.06);
-}
-
-/* Hide Streamlit menu */
-#MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
-header { visibility: hidden; }
+.stApp { background: linear-gradient(135deg, #0d0221, #1a0533, #2d0b4e); }
+h1 { background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.4rem; text-align: center; }
+.stChatMessage [data-testid="stChatMessageContent"] { border-radius: 16px; padding: 14px 18px; }
+section[data-testid="stSidebar"] { background: rgba(255,255,255,0.03); }
 </style>
 """, unsafe_allow_html=True)
 
