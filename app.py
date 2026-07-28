@@ -151,89 +151,146 @@ def chat(message: str, history: list) -> str:
 
 # ─── UI (Gradio + tema Medicamentum360 oscuro) ───────────────────────
 CUSTOM_CSS = """
-/* === Medicamentum360 Dark Theme === */
-:root {
-  --bg: #0d0221;
-  --bg2: #1a0533;
-  --bg3: #2d0b4e;
-  --accent: #7c3aed;
-  --accent2: #6366f1;
-  --text: #e9d5ff;
-  --text2: #a78bfa;
-  --border: rgba(255,255,255,0.08);
-  --radius: 14px;
-}
+/* === Medicamentum360 Dark Theme (identical to ChatWidget) === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body, .gradio-container {
-  background: linear-gradient(135deg, var(--bg), var(--bg2), var(--bg3)) !important;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-  color: var(--text) !important;
+* { font-family: 'Inter', system-ui, -apple-system, sans-serif !important; }
+
+body, .gradio-container, .contain, .app {
+  background: linear-gradient(135deg, #0d0221, #1a0533, #2d0b4e) !important;
+  min-height: 100vh !important;
+  color: #e9d5ff !important;
 }
 
 /* Header */
-h1, h2, h3 { color: var(--text) !important; }
-h1 { font-size: 2rem !important; background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.gr-markdown a { color: var(--accent2) !important; }
-
-/* Chat */
-.gr-chatbot {
-  background: rgba(255,255,255,0.03) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius) !important;
-  backdrop-filter: blur(12px) !important;
+h1, h2, h3, h4, label, .block-label {
+  color: #e9d5ff !important;
+  font-weight: 600 !important;
 }
 
-/* Chat bubbles */
-.bubble-wrap .user { background: var(--accent) !important; color: white !important; border-radius: 14px 14px 4px 14px !important; }
-.bubble-wrap .bot { background: rgba(255,255,255,0.08) !important; color: var(--text) !important; border-radius: 14px 14px 14px 4px !important; }
+/* Chat container */
+.chatbot, .message-wrap, .bubble-wrap {
+  background: transparent !important;
+  border: none !important;
+}
 
-/* Input */
-.gr-textbox textarea, .gr-textbox input {
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 12px !important;
-  color: var(--text) !important;
+/* User bubble (violet) */
+.bubble-wrap .user, .message.user .bubble, [class*="user"] .bubble {
+  background: #7c3aed !important;
+  color: white !important;
+  border-radius: 16px 16px 4px 16px !important;
   padding: 12px 16px !important;
   font-size: 14px !important;
-}
-.gr-textbox textarea:focus, .gr-textbox input:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(124,58,237,0.2) !important;
+  line-height: 1.5 !important;
+  max-width: 85% !important;
 }
 
-/* Buttons */
-.gr-button-primary, button.primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+/* Bot bubble (glass) */
+.bubble-wrap .bot, .message.bot .bubble, [class*="bot"] .bubble, [class*="assistant"] .bubble {
+  background: rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #e5e7eb !important;
+  border-radius: 16px 16px 16px 4px !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  max-width: 85% !important;
+}
+
+/* Input */
+textarea, input[type="text"], .gr-textbox textarea, .gr-textbox input, .textbox textarea {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 14px !important;
+  color: #e5e7eb !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  outline: none !important;
+  transition: border-color 0.2s ease !important;
+}
+textarea:focus, input:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.2) !important;
+}
+textarea::placeholder, input::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Send button */
+.gr-button-primary, button.primary, .btn-primary, .send-btn {
+  background: #7c3aed !important;
   border: none !important;
   border-radius: 12px !important;
+  color: white !important;
   font-weight: 600 !important;
+  padding: 10px 18px !important;
   transition: all 0.2s ease !important;
+  cursor: pointer !important;
 }
-.gr-button-primary:hover {
+.gr-button-primary:hover, button.primary:hover {
+  background: #6d28d9 !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.4) !important;
 }
 
 /* Examples */
-.gr-examples .example {
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  color: var(--text2) !important;
-  transition: all 0.2s !important;
+.examples, .gr-examples {
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  background: rgba(255,255,255,0.02) !important;
 }
-.gr-examples .example:hover {
-  background: rgba(255,255,255,0.1) !important;
-  border-color: var(--accent) !important;
+.example, .gr-examples .example {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 8px !important;
+  color: #a78bfa !important;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+}
+.example:hover, .gr-examples .example:hover {
+  background: rgba(124,58,237,0.15) !important;
+  border-color: #7c3aed !important;
+  color: #c4b5fd !important;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar { width: 5px !important; }
+::-webkit-scrollbar-track { background: transparent !important; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1) !important; border-radius: 3px !important; }
 
-/* Footer */
-footer { display: none !important; }
+/* Chat area */
+.chatbot, .chatbot > div {
+  background: rgba(255,255,255,0.02) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 16px !important;
+}
+
+/* Hide Gradio footer/branding */
+footer, .footer, .dark .footer, #footer, .gradio-footer {
+  display: none !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Rows */
+.row, .form {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Panel */
+.panel, .prose {
+  background: transparent !important;
+}
+
+/* Hide built-with-gradio */
+.contain > div:last-child {
+  display: none !important;
+}
 """
 
 EXAMPLES = [
