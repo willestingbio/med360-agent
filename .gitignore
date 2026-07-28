@@ -15,6 +15,7 @@ venv/
 # Data (generado en runtime)
 data/*
 !data/.gitkeep
+!data/kb_chunks.json
 
 # Docker volumes
 n8n_data/

@@ -189,11 +189,7 @@ EXAMPLES = [
 def build_ui():
     import gradio as gr
 
-    with gr.Blocks(
-        title="medicalMen — Medicamentum360",
-        theme=gr.themes.Soft(primary_hue="violet"),
-        css="footer { display: none !important; }",
-    ) as demo:
+    with gr.Blocks(title="medicalMen — Medicamentum360") as demo:
         gr.Markdown(
             "# 🩺 medicalMen\n"
             "### Asistente IA de Medicamentum360\n"
@@ -208,7 +204,6 @@ def build_ui():
             }],
             label="Chat",
             height=450,
-            type="messages",
         )
 
         msg = gr.Textbox(
@@ -242,4 +237,9 @@ if __name__ == "__main__":
     print(f"   Modelo: {GROQ_MODEL}")
     demo = build_ui()
     port = int(os.getenv("PORT", "7860"))
-    demo.launch(server_name="0.0.0.0", server_port=port, share=False)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        share=False,
+        css="footer { display: none !important; }",
+    )
