@@ -19,47 +19,50 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL   = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 KB_PATH      = os.path.join(os.path.dirname(__file__), "data", "kb_chunks.json")
 
-st.set_page_config(page_title="medicalMen — Medicamentum360", page_icon="🩺", layout="wide")
+st.set_page_config(page_title="medicalMen — Medicamentum360", page_icon="🩺")
 
 # ─── CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-* { font-family: 'Inter', system-ui, sans-serif !important; }
+* { font-family: 'Inter', system-ui, sans-serif; }
 
-.stApp { background: linear-gradient(135deg, #0d0221, #1a0533, #2d0b4e) !important; }
+.stApp { 
+    background: linear-gradient(135deg, #0d0221, #1a0533, #2d0b4e) !important; 
+}
 
-/* Header */
-h1 { background: linear-gradient(135deg, #a855f7, #6366f1, #c084fc) !important;
-     -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
-     font-size: 2.4rem !important; text-align: center !important; margin-bottom: 0 !important; }
+h1 { 
+    background: linear-gradient(135deg, #a855f7, #6366f1, #c084fc);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-size: 2.4rem !important; text-align: center; margin-bottom: 0;
+}
 
 /* Chat bubbles */
-[data-testid="stChatMessage"] { background: transparent !important; }
 .stChatMessage [data-testid="stChatMessageContent"] {
-    border-radius: 16px !important; padding: 14px 18px !important; font-size: 15px !important; line-height: 1.6 !important;
+    border-radius: 16px; padding: 14px 18px; font-size: 15px; line-height: 1.6;
 }
 .stChatMessage[data-testid="stChatMessageUser"] [data-testid="stChatMessageContent"] {
-    background: #7c3aed !important; color: white !important; border-bottom-right-radius: 4px !important;
+    background: #7c3aed; color: white; border-bottom-right-radius: 4px;
 }
 .stChatMessage[data-testid="stChatMessageAssistant"] [data-testid="stChatMessageContent"] {
-    background: rgba(255,255,255,0.08) !important; color: #e5e7eb !important; 
-    border-bottom-left-radius: 4px !important; backdrop-filter: blur(8px) !important;
+    background: rgba(255,255,255,0.08); color: #e5e7eb; border-bottom-left-radius: 4px;
 }
 
 /* Input */
-.stChatInput textarea, .stChatInput input {
-    background: rgba(255,255,255,0.06) !important; border: 1px solid rgba(255,255,255,0.12) !important;
-    border-radius: 14px !important; color: #e5e7eb !important; padding: 12px 16px !important;
+.stChatInput textarea {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px; color: #e5e7eb; padding: 12px 16px;
 }
-.stChatInput textarea:focus { border-color: #7c3aed !important; }
 
 /* Sidebar */
-[data-testid="stSidebar"] { background: rgba(255,255,255,0.03) !important; border-right: 1px solid rgba(255,255,255,0.06) !important; }
-[data-testid="stSidebar"] * { color: #a78bfa !important; }
+section[data-testid="stSidebar"] {
+    background: rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.06);
+}
 
-/* Hide Streamlit branding */
-#MainMenu, footer, header [data-testid="stDecoration"] { display: none !important; }
+/* Hide Streamlit menu */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
