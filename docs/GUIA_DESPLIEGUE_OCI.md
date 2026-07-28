@@ -4,103 +4,130 @@
 
 ---
 
-## 1. Requisitos previos
+## 📋 Requisitos previos
 
-- Cuenta Oracle Cloud (Free Tier: [signup.oracle.com](https://signup.oracle.com))
-- Clave API de Groq (gratis: [console.groq.com/keys](https://console.groq.com/keys))
-- Git instalado
+| Requisito | Dónde conseguirlo |
+|---|---|
+| Cuenta Oracle Cloud (Free Tier) | [signup.oracle.com](https://signup.oracle.com) |
+| API Key de Groq (gratis) | [console.groq.com/keys](https://console.groq.com/keys) |
+| Git | `sudo apt install -y git` |
+| Dominio (opcional, para HTTPS) | Namecheap, GoDaddy, etc. |
 
 ---
 
-## 2. Crear instancia OCI Compute
+## 🚀 Despliegue — paso a paso
 
-1. Ve a https://cloud.oracle.com → **Compute → Instances**
-2. Clic en **Create instance**
-3. Configura:
+### 1. Crear instancia OCI
+
+1. Abre [cloud.oracle.com](https://cloud.oracle.com) → **Compute → Instances → Create instance**
+
+2. Configura:
 
 | Campo | Valor |
 |---|---|
 | Name | `medicalmen` |
-| Image | Ubuntu 24.04 LTS |
-| Shape | VM.Standard.E2.1.Micro (Free Tier: 1 OCPU, 1 GB RAM) |
-| Boot volume | 50 GB |
+| Image | **Canonical Ubuntu 24.04 LTS** |
+| Shape | **VM.Standard.E2.1.Micro** (Free Tier) |
 | SSH key | Sube tu clave pública |
 
-4. En **Networking**, crea una VCN si no tienes. Asegúrate de que la subnet tenga Internet Gateway.
-5. En **Security List**, agrega reglas de ingreso:
+3. En **Security List**, agrega reglas de ingreso:
 
 | Source | Puerto | Descripción |
 |---|---|---|
-| 0.0.0.0/0 | 22 | SSH |
-| 0.0.0.0/0 | 7860 | Gradio (prueba) |
-| 0.0.0.0/0 | 80 | HTTP (opcional con Nginx) |
-| 0.0.0.0/0 | 443 | HTTPS (opcional con SSL) |
+| `0.0.0.0/0` | 22 | SSH |
+| `0.0.0.0/0` | 80 | HTTP |
+| `0.0.0.0/0` | 443 | HTTPS (si tienes dominio) |
 
-6. Clic en **Create** y espera a que esté **Running**.
-7. Anota la **Public IP**.
+4. Clic **Create**. Cuando diga "Running", asigna IP pública:
+   - Ve a la instancia → **Attached VNICs** → clic en el VNIC
+   - **IPv4 Addresses** → **Assign public IP** → Ephemeral
+   - Anota la IP (ej: `157.xxx.xxx.xxx`)
 
 ---
 
-## 3. Conectar e instalar
+### 2. Conectar e instalar
 
 ```bash
-# Conectar por SSH
-ssh ubuntu@<IP_PUBLICA>
+# Conectar (usa tu IP y tu llave SSH)
+ssh -i tu_llave.key ubuntu@<IP_PUBLICA>
 
-# Instalar Docker
+# Instalar Docker + Git
 curl -fsSL https://get.docker.com | sudo bash
 sudo usermod -aG docker ubuntu
 newgrp docker
-
-# Instalar Git
 sudo apt install -y git
 ```
 
 ---
 
-## 4. Clonar y desplegar
+### 3. Clonar y desplegar
 
 ```bash
-# Clonar repositorio
+# Clonar
 git clone https://github.com/willestingbio/med360-agent.git
 cd med360-agent
 
 # Configurar API key de Groq
+# Obtén la tuya gratis en: https://console.groq.com/keys
 echo "GROQ_API_KEY=gsk_tu_key_aqui" > .env
 
-# Levantar con Docker Compose
+# Desplegar con Docker Compose
 docker compose up -d
+```
 
-# Verificar que está corriendo
+---
+
+### 4. Probar
+
+Abre tu navegador y visita:
+
+```
+http://<IP_PUBLICA>
+```
+
+Debes ver la interfaz de medicalMen con el chat. Escribe "hola" o cualquier pregunta de ejemplo.
+
+**¿No funciona?** Verifica:
+
+```bash
+# Ver logs
+docker compose logs -f app
+
+# Verificar contenedor
 docker compose ps
-# Debe mostrar: medicalmen → Up
-```
 
----
-
-## 5. Probar
-
-```bash
-# Probar localmente en el servidor
+# Probar localmente
 curl http://localhost:7860
-
-# Desde tu navegador
-# Abre: http://<IP_PUBLICA>:7860
 ```
 
 ---
 
-## 6. (Opcional) Nginx + SSL + Dominio
+### 5. (Opcional) Dominio + HTTPS con Let's Encrypt
+
+Si tienes un dominio (ej: `agente.medicamentum360.com`):
 
 ```bash
-# Instalar Nginx
-sudo apt install -y nginx certbot python3-certbot-nginx
+# Apuntar dominio a la IP de OCI (en tu proveedor de dominio)
 
-# Crear config
+# Instalar Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# Parar Docker Nginx (vamos a usar el del sistema)
+docker compose stop nginx
+
+# Configurar sitio
 sudo tee /etc/nginx/sites-available/medicalmen << 'EOF'
 server {
     listen 80;
     server_name agente.medicamentum360.com;
+
+    location /queue/join {
+        proxy_pass http://localhost:7860;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
 
     location / {
         proxy_pass http://localhost:7860;
@@ -109,41 +136,68 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 86400;
+        proxy_buffering off;
     }
 }
 EOF
 
-# Activar sitio
-sudo ln -s /etc/nginx/sites-available/medicalmen /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/medicalmen /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 
-# SSL con Let's Encrypt
+# Obtener certificado SSL
 sudo certbot --nginx -d agente.medicamentum360.com
+
+# Verificar renovación automática
+sudo certbot renew --dry-run
 ```
 
 ---
 
-## 7. Actualizar la aplicación
+### 6. Mantenimiento
 
 ```bash
+# Ver logs en tiempo real
+docker compose logs -f app
+
+# Reiniciar después de actualizar código
 cd ~/med360-agent
 git pull
 docker compose up -d --build
+
+# Ver uso de recursos
+docker stats medicalmen
 ```
 
 ---
 
-## 8. Solución de problemas
+## 🔧 Solución de problemas
 
-```bash
-# Ver logs
-docker compose logs -f app
+| Problema | Solución |
+|---|---|
+| Connection refused | Verifica que el puerto 7860/80 esté en la Security List |
+| 502 Bad Gateway (Nginx) | `docker compose restart app` |
+| Sin respuestas de IA | Verifica `GROQ_API_KEY` en `.env`: `cat .env` |
+| 403 Forbidden de Groq | La key expiró o no es válida. Crea una nueva en console.groq.com |
+| KB vacía (0 chunks) | `ls data/kb_chunks.json` — si no existe, regenera |
+| Puerto 7860 no accesible | Asegúrate de haber agregado la regla en Security List |
+| SSH timeout | Verifica puerto 22 en Security List y que la IP pública esté asignada |
 
-# Reiniciar
-docker compose restart app
+---
 
-# Reconstruir desde cero
-docker compose down
-docker compose up -d --build
+## 📊 Arquitectura de producción
+
 ```
+Internet → Nginx (:80) → Gradio App (:7860, Docker) → Groq API
+                                                          ↓
+                                                     KB local (TF-IDF)
+```
+
+- **Nginx**: reverse proxy, caching, WebSocket para Gradio
+- **Gradio**: interfaz web Python, tema oscuro Medicamentum360
+- **Groq**: API gratuita de LLM (Llama 3.3 70B)
+- **KB local**: 237 chunks TF-IDF (fallback sin API)
+- **Docker Compose**: orquestación de contenedores
+- **OCI**: Oracle Cloud Free Tier (VM.Standard.E2.1.Micro)
