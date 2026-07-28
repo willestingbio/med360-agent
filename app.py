@@ -248,10 +248,7 @@ def build_ui():
         """)
 
         chatbot = gr.Chatbot(
-            value=[{
-                "role": "assistant",
-                "content": "¡Hola! 👋 Soy **medicalMen** 🩺<br><br>Tu asistente virtual de **Medicamentum360**, la plataforma de formación médica. Pregúntame sobre cursos, precios, reembolsos, cómo vender tus cursos o capacitación corporativa.<br><br>¿En qué te ayudo hoy?",
-            }],
+            value=[(None, "¡Hola! 👋 Soy **medicalMen** 🩺<br><br>Tu asistente virtual de **Medicamentum360**, la plataforma de formación médica. Pregúntame sobre cursos, precios, reembolsos, cómo vender tus cursos o capacitación corporativa.<br><br>¿En qué te ayudo hoy?")],
             label="",
             height=440,
             show_label=False,
@@ -278,10 +275,9 @@ def build_ui():
         """)
 
         def respond(message, history):
-            return history + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": chat(message, history)},
-            ]
+            response = chat(message, history)
+            history.append((message, response))
+            return history
 
         msg.submit(respond, [msg, chatbot], [chatbot]).then(lambda: "", None, [msg])
         send.click(respond, [msg, chatbot], [chatbot]).then(lambda: "", None, [msg])
