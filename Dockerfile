@@ -15,5 +15,4 @@ CMD streamlit run app.py \
     --server.address=0.0.0.0 \
     --server.headless=true \
     --server.enableXsrfProtection=false \
-    --server.enableCORS=false \
-    --browser.serverAddress=157.137.236.116
+    --server.enableCORS=false
